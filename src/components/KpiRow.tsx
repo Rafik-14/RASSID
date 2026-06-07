@@ -7,6 +7,7 @@ interface KpiRowProps {
   totalDebt: number;
   storesCount: number;
   collectedToday: number;
+  overdueCount: number;
   onPressDebt: () => void;
   onPressStores: () => void;
   onPressCollected: () => void;
@@ -16,6 +17,7 @@ export function KpiRow({
   totalDebt,
   storesCount,
   collectedToday,
+  overdueCount,
   onPressDebt,
   onPressStores,
   onPressCollected,
@@ -42,7 +44,9 @@ export function KpiRow({
           <ElevatedCard style={styles.storesCard} glow="rgba(251, 191, 36, 0.14)">
             <Eyebrow dot={c.amber} style={{ marginBottom: 12 }}>MAGASINS</Eyebrow>
             <AnimatedNumber value={storesCount} style={styles.storesValue} duration={700} />
-            <Text style={styles.storesSubText}>2 en alerte</Text>
+            <Text style={styles.storesSubText}>
+              {overdueCount > 0 ? `${overdueCount} en alerte` : 'Aucune alerte'}
+            </Text>
           </ElevatedCard>
         </Pressable>
         

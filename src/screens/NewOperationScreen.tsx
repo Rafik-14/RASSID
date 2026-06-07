@@ -82,13 +82,22 @@ export function NewOperationScreen() {
   const [note, setNote] = useState('');
 
   const load = useCallback(async () => {
-    const sList = await getAllStores();
-    setStores(sList);
-    const pList = await getProducts();
-    setProducts(pList);
+    try {
+      const sList = await getAllStores();
+      setStores(sList);
+      const pList = await getProducts();
+      setProducts(pList);
 
-    if (storeId) {
-      setStore(await getStoreById(storeId));
+      if (storeId) {
+        setStore(await getStoreById(storeId));
+      }
+    } catch (e: any) {
+      console.error('Load error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Erreur de chargement',
+        text2: e.message || 'Impossible de charger les données.',
+      });
     }
   }, [storeId]);
 

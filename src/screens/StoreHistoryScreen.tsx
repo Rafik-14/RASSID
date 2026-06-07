@@ -15,6 +15,7 @@ import { formatDAFull } from '@/utils/currency';
 import { formatDateShort } from '@/utils/dates';
 import { useApp } from '@/store/AppContext';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -58,7 +59,16 @@ export function StoreHistoryScreen() {
   const [txs, setTxs] = useState<Transaction[]>([]);
 
   const load = useCallback(async () => {
-    setTxs(await getStoreTransactions(route.params.storeId, filter));
+    try {
+      setTxs(await getStoreTransactions(route.params.storeId, filter));
+    } catch (e: any) {
+      console.error('Load error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Erreur de chargement',
+        text2: e.message || 'Impossible de charger les données.',
+      });
+    }
   }, [route.params.storeId, filter]);
 
   useFocusEffect(

@@ -10,6 +10,7 @@ import { c } from '@/components/tokens';
 import type { RootStackParamList } from '@/navigation/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getMonthlyChartData } from '@/database/queries';
+import Toast from 'react-native-toast-message';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -20,7 +21,16 @@ export function PaymentsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      getMonthlyChartData(2).then(data => setMonthTotal(data.total));
+      getMonthlyChartData(2)
+        .then(data => setMonthTotal(data.total))
+        .catch((e: any) => {
+          console.error('Load error:', e);
+          Toast.show({
+            type: 'error',
+            text1: 'Erreur de chargement',
+            text2: e.message || 'Impossible de charger les données.',
+          });
+        });
     }, [])
   );
 
@@ -37,7 +47,7 @@ export function PaymentsScreen() {
         <ElevatedCard style={styles.monthCard} glow="rgba(45, 212, 191, 0.14)">
           <Eyebrow dot={c.green} style={{ marginBottom: 12 }}>CE MOIS</Eyebrow>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-            <AnimatedNumber value={monthTotal || 96200} style={styles.amountText} />
+            <AnimatedNumber value={monthTotal} style={styles.amountText} />
             <Text style={styles.currencyText}>DA</Text>
           </View>
           <Text style={styles.monthSubtitle}>Encaissé</Text>

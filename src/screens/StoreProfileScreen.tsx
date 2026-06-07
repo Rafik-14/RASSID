@@ -25,6 +25,7 @@ import { getInitials } from '@/utils/storeHelpers';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
+import Toast from 'react-native-toast-message';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'StoreProfile'>;
@@ -46,7 +47,16 @@ export function StoreProfileScreen() {
   const [store, setStore] = useState<Store | null>(null);
 
   const load = useCallback(async () => {
-    setStore(await getStoreById(route.params.storeId));
+    try {
+      setStore(await getStoreById(route.params.storeId));
+    } catch (e: any) {
+      console.error('Load error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Erreur de chargement',
+        text2: e.message || 'Impossible de charger les données.',
+      });
+    }
   }, [route.params.storeId]);
 
   useFocusEffect(

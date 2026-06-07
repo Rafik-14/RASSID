@@ -26,6 +26,7 @@ import { pushSyncQueue } from '@/services/syncService';
 import { hasRepProfile, getRepProfile } from '@/services/repService';
 import { applyRepProfile } from '@/config/env';
 import { ProfileSetupScreen } from '@/screens/ProfileSetupScreen';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -209,7 +210,9 @@ export default function App() {
     <SafeAreaProvider onLayout={onLayout}>
       <AppProvider>
         <NavigationContainer theme={navTheme}>
-          <RootNavigator />
+          <ErrorBoundary>
+            <RootNavigator />
+          </ErrorBoundary>
         </NavigationContainer>
       </AppProvider>
       <StatusBar style="light" />

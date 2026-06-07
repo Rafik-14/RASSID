@@ -149,79 +149,82 @@ export interface CreateTransactionInput {
 
 export async function createTransaction(input: CreateTransactionInput): Promise<Transaction> {
   const db = await getDatabase();
-  const txId = Crypto.randomUUID();
-  const createdAt = isoNow();
-  const parentHash = await getLastTxHash(input.storeId);
-  const signedAmount =
-    input.txType === 1 ? Math.abs(input.amount) : -Math.abs(input.amount);
+  
+  return await db.withExclusiveTransactionAsync(async () => {
+    const txId = Crypto.randomUUID();
+    const createdAt = isoNow();
+    const parentHash = await getLastTxHash(input.storeId);
+    const signedAmount =
+      input.txType === 1 ? Math.abs(input.amount) : -Math.abs(input.amount);
 
-  const hash = await computeTxHash(
-    txId,
-    input.storeId,
-    input.txType,
-    signedAmount,
-    createdAt,
-    parentHash
-  );
-
-  await db.runAsync(
-    `INSERT INTO transactions (tx_id, store_id, tx_type, amount, reference_no, note,
-      hash_signature, parent_hash, sync_status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
-    [
+    const hash = await computeTxHash(
       txId,
       input.storeId,
       input.txType,
       signedAmount,
-      input.referenceNo ?? null,
-      input.note ?? null,
-      hash,
-      parentHash,
       createdAt,
-    ]
-  );
-
-  if (input.items?.length) {
-    for (const item of input.items) {
-      await db.runAsync(
-        `INSERT INTO transaction_items (item_id, tx_id, product_id, quantity, price_at_time)
-         VALUES (?, ?, ?, ?, ?)`,
-        [Crypto.randomUUID(), txId, item.productId, item.quantity, item.priceAtTime]
-      );
-    }
-  }
-
-  const balanceDelta = signedAmount;
-  const store = await getStoreById(input.storeId);
-  if (store) {
-    const newBalance = store.current_balance + balanceDelta;
-    let lastDelivery = store.last_delivery_date;
-    let lastPayment = store.last_payment_date;
-    let totalDelivered = store.total_delivered;
-    let totalCollected = store.total_collected;
-
-    if (input.txType === 1) {
-      lastDelivery = createdAt;
-      totalDelivered += Math.abs(signedAmount);
-    } else if (input.txType === 2) {
-      lastPayment = createdAt;
-      totalCollected += Math.abs(signedAmount);
-    } else if (input.txType === 3 || input.txType === 4) {
-      // retour / avoir reduce debt
-    }
+      parentHash
+    );
 
     await db.runAsync(
-      `UPDATE stores SET current_balance = ?, last_delivery_date = ?, last_payment_date = ?,
-        total_delivered = ?, total_collected = ?, sync_status = 'pending'
-       WHERE store_id = ?`,
-      [newBalance, lastDelivery, lastPayment, totalDelivered, totalCollected, input.storeId]
+      `INSERT INTO transactions (tx_id, store_id, tx_type, amount, reference_no, note,
+        hash_signature, parent_hash, sync_status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+      [
+        txId,
+        input.storeId,
+        input.txType,
+        signedAmount,
+        input.referenceNo ?? null,
+        input.note ?? null,
+        hash,
+        parentHash,
+        createdAt,
+      ]
     );
-  }
 
-  const tx = await db.getFirstAsync<Transaction>('SELECT * FROM transactions WHERE tx_id = ?', [
-    txId,
-  ]);
-  return tx!;
+    if (input.items?.length) {
+      for (const item of input.items) {
+        await db.runAsync(
+          `INSERT INTO transaction_items (item_id, tx_id, product_id, quantity, price_at_time)
+           VALUES (?, ?, ?, ?, ?)`,
+          [Crypto.randomUUID(), txId, item.productId, item.quantity, item.priceAtTime]
+        );
+      }
+    }
+
+    const balanceDelta = signedAmount;
+    const store = await getStoreById(input.storeId);
+    if (store) {
+      const newBalance = store.current_balance + balanceDelta;
+      let lastDelivery = store.last_delivery_date;
+      let lastPayment = store.last_payment_date;
+      let totalDelivered = store.total_delivered;
+      let totalCollected = store.total_collected;
+
+      if (input.txType === 1) {
+        lastDelivery = createdAt;
+        totalDelivered += Math.abs(signedAmount);
+      } else if (input.txType === 2) {
+        lastPayment = createdAt;
+        totalCollected += Math.abs(signedAmount);
+      } else if (input.txType === 3 || input.txType === 4) {
+        // retour / avoir reduce debt
+      }
+
+      await db.runAsync(
+        `UPDATE stores SET current_balance = ?, last_delivery_date = ?, last_payment_date = ?,
+          total_delivered = ?, total_collected = ?, sync_status = 'pending'
+         WHERE store_id = ?`,
+        [newBalance, lastDelivery, lastPayment, totalDelivered, totalCollected, input.storeId]
+      );
+    }
+
+    const tx = await db.getFirstAsync<Transaction>('SELECT * FROM transactions WHERE tx_id = ?', [
+      txId,
+    ]);
+    return tx!;
+  });
 }
 
 export async function getTransactionItems(txId: string): Promise<TransactionItem[]> {

@@ -77,6 +77,8 @@ const PRODUCTS = [
 ];
 
 export async function seedDatabaseIfEmpty(db: SQLiteDatabase): Promise<void> {
+  if (!__DEV__) return; // Never seed in production
+
   const row = await db.getFirstAsync<{ count: number }>(
     'SELECT COUNT(*) as count FROM stores WHERE is_deleted = 0'
   );

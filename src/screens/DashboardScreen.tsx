@@ -35,16 +35,25 @@ export function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const [k, l, p, s] = await Promise.all([
-      getDashboardKpis(),
-      getMonthlyChartData(1),
-      getMonthlyChartData(2),
-      getAllStores(),
-    ]);
-    setKpis(k);
-    setLivraisonChart(l);
-    setPaiementChart(p);
-    setStores(s);
+    try {
+      const [k, l, p, s] = await Promise.all([
+        getDashboardKpis(),
+        getMonthlyChartData(1),
+        getMonthlyChartData(2),
+        getAllStores(),
+      ]);
+      setKpis(k);
+      setLivraisonChart(l);
+      setPaiementChart(p);
+      setStores(s);
+    } catch (e: any) {
+      console.error('Load error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Erreur de chargement',
+        text2: e.message || 'Impossible de charger les données.',
+      });
+    }
   }, []);
 
   useFocusEffect(
@@ -61,8 +70,16 @@ export function DashboardScreen() {
   };
 
   const handleSync = async () => {
-    const msg = await syncNow();
-    Toast.show({ type: 'success', text1: 'Synchronisation', text2: msg });
+    try {
+      const msg = await syncNow();
+      Toast.show({ type: 'success', text1: 'Synchronisation', text2: msg });
+    } catch (e: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Échec de la synchronisation',
+        text2: e.message || 'Erreur inconnue',
+      });
+    }
   };
 
   const overdueStores = stores.filter(s => {
@@ -129,6 +146,7 @@ export function DashboardScreen() {
           totalDebt={kpis.totalReceivables}
           storesCount={kpis.activeStores}
           collectedToday={kpis.cashCollectedToday}
+          overdueCount={overdueCount}
           onPressDebt={() => navigation.navigate('OverdueAlerts')}
           onPressStores={() => navigation.navigate('Stores' as any)} // Switch tab
           onPressCollected={() => navigation.navigate('Payments' as any)}
@@ -143,10 +161,10 @@ export function DashboardScreen() {
             <Pressable onPress={() => navigation.navigate('Deliveries' as any)}>
               <ChartCard
                 title="LIVRAISONS"
-                trend={8.4}
-                amount={livraisonChart.total || 127000}
+                trend={0}
+                amount={livraisonChart.total}
                 subtitle="marchandises livrées ce mois"
-                data={livraisonChart.points.length ? livraisonChart.points : [40, 52, 38, 60, 48, 70, 65]}
+                data={livraisonChart.points}
                 color={c.red}
               />
             </Pressable>
@@ -155,10 +173,10 @@ export function DashboardScreen() {
             <Pressable onPress={() => navigation.navigate('Payments' as any)}>
               <ChartCard
                 title="PAIEMENTS REÇUS"
-                trend={-4.1}
-                amount={paiementChart.total || 98000}
+                trend={0}
+                amount={paiementChart.total}
                 subtitle="encaissé ce mois"
-                data={paiementChart.points.length ? paiementChart.points : [20, 32, 28, 36, 40, 48, 52]}
+                data={paiementChart.points}
                 color={c.green}
               />
             </Pressable>

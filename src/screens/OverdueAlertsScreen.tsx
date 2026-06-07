@@ -16,6 +16,7 @@ import { formatDAFull } from '@/utils/currency';
 import { isoNow } from '@/utils/dates';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -29,25 +30,34 @@ export function OverdueAlertsScreen() {
   const [totalAlertDebt, setTotalAlertDebt] = useState(0);
 
   const load = useCallback(async () => {
-    const all = await getAllStores();
-    
-    // Compute byDebt
-    const withDebt = all.filter(s => s.current_balance > 0).sort((a, b) => b.current_balance - a.current_balance);
-    setByDebt(withDebt);
-    
-    // Compute alerts (10+ days overdue)
-    const nowMs = new Date(isoNow()).getTime();
-    const computedAlerts = withDebt.map(s => {
-      let days = 999;
-      if (s.last_payment_date) {
-        const lastMs = new Date(s.last_payment_date).getTime();
-        days = Math.floor((nowMs - lastMs) / (1000 * 3600 * 24));
-      }
-      return { ...s, daysSincePayment: days };
-    }).filter(s => s.daysSincePayment >= 10).sort((a, b) => b.daysSincePayment - a.daysSincePayment);
-    
-    setAlerts(computedAlerts);
-    setTotalAlertDebt(computedAlerts.reduce((sum, s) => sum + s.current_balance, 0));
+    try {
+      const all = await getAllStores();
+      
+      // Compute byDebt
+      const withDebt = all.filter(s => s.current_balance > 0).sort((a, b) => b.current_balance - a.current_balance);
+      setByDebt(withDebt);
+      
+      // Compute alerts (10+ days overdue)
+      const nowMs = new Date(isoNow()).getTime();
+      const computedAlerts = withDebt.map(s => {
+        let days = 999;
+        if (s.last_payment_date) {
+          const lastMs = new Date(s.last_payment_date).getTime();
+          days = Math.floor((nowMs - lastMs) / (1000 * 3600 * 24));
+        }
+        return { ...s, daysSincePayment: days };
+      }).filter(s => s.daysSincePayment >= 10).sort((a, b) => b.daysSincePayment - a.daysSincePayment);
+      
+      setAlerts(computedAlerts);
+      setTotalAlertDebt(computedAlerts.reduce((sum, s) => sum + s.current_balance, 0));
+    } catch (e: any) {
+      console.error('Load error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Erreur de chargement',
+        text2: e.message || 'Impossible de charger les données.',
+      });
+    }
   }, []);
 
   useFocusEffect(

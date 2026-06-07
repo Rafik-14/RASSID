@@ -23,6 +23,7 @@ import type { Store } from '@/types';
 import { useApp } from '@/store/AppContext';
 import type { RootStackParamList } from '@/navigation/types';
 import { LinearGradient } from 'expo-linear-gradient';
+import Toast from 'react-native-toast-message';
 import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
 
 // Platform check removed since New Architecture is used
@@ -41,8 +42,17 @@ export function StoresScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const s = await getAllStores();
-    setStores(s);
+    try {
+      const s = await getAllStores();
+      setStores(s);
+    } catch (e: any) {
+      console.error('Load error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Erreur de chargement',
+        text2: e.message || 'Impossible de charger les données.',
+      });
+    }
   }, []);
 
   useFocusEffect(
