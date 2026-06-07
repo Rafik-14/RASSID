@@ -32,17 +32,16 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
 }
 
 export async function getOverdueStores(minDays = 10): Promise<Store[]> {
-  const stores = await getAllStores();
-  const now = Date.now();
-  return stores
-    .filter((s) => {
-      if (s.current_balance <= 0 || !s.last_payment_date) return false;
-      const days = Math.floor(
-        (now - new Date(s.last_payment_date).getTime()) / (1000 * 60 * 60 * 24)
-      );
-      return days >= minDays;
-    })
-    .sort((a, b) => b.current_balance - a.current_balance);
+  const db = await getDatabase();
+  return db.getAllAsync<Store>(
+    `SELECT * FROM stores
+     WHERE is_deleted = 0
+       AND current_balance > 0
+       AND last_payment_date IS NOT NULL
+       AND CAST(julianday('now') - julianday(last_payment_date) AS INTEGER) >= ?
+     ORDER BY current_balance DESC`,
+    [minDays]
+  );
 }
 
 export async function getDashboardKpis(): Promise<DashboardKpis> {
@@ -200,6 +199,9 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
     const store = await getStoreById(input.storeId);
     if (store) {
       const newBalance = store.current_balance + balanceDelta;
+      if (newBalance < 0) {
+        throw new Error('Le montant du paiement ne peut pas dépasser la dette actuelle.');
+      }
       let lastDelivery = store.last_delivery_date;
       let lastPayment = store.last_payment_date;
       let totalDelivered = store.total_delivered;

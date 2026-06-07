@@ -26,7 +26,6 @@ This document tracks the completed tasks from the production plan (`production_p
 
 - [x] **1.6 EAS Build Configuration**
   - **Details**: Created `eas.json` to configure Expo Application Services for `development`, `preview`, and `production` distribution profiles. Updated `app.json` splash screen background for production. 
-  - **Pending Manual Step**: The user needs to run `npx eas-cli init` in their terminal and log into Expo to generate their real EAS Project ID and update `app.json`.
   - **Impact**: Prepares the project for cloud compilation and over-the-air updates.
 
 - [x] **1.7 Wrap Transaction Creation in a Database Transaction**
@@ -54,6 +53,46 @@ This document tracks the completed tasks from the production plan (`production_p
 - [x] **2.5 SQLite Schema Migrations**
   - **Details**: Designed a sequential migration system in `src/database/index.ts` to seamlessly alter existing SQLite tables (adding `rep_id` columns) without crashing previous installations.
   - **Impact**: Provides a robust foundation for modifying the database schema moving forward into Phase 3.
+
+## Phase 3: Data & Sync Infrastructure (COMPLETED)
+
+- [x] **3.1 Pull Sync (Server → Device)**
+  - **Details**: Created `pullSync.ts` to fetch products and recently updated stores from Supabase. Added a PostgreSQL trigger to `schema.sql` to automatically maintain `updated_at` timestamps on the server.
+  - **Impact**: Enables multi-device support. Changes made on the server or by other reps are now automatically downloaded to the local device.
+
+- [x] **3.2 Sync Stores & Transaction Items (Push)**
+  - **Details**: Modified `pushSyncQueue()` in `syncService.ts` to upload newly created stores to Supabase via `upsert`. Additionally, successfully nested and mapped `transaction_items` to their parent transactions and updated the `sync_transactions_batch` RPC in `schema.sql` to loop and safely execute bulk item inserts alongside transaction inserts.
+  - **Impact**: Ensures that offline-created stores and individual line items for all transactions are fully backed up to the cloud without being orphaned.
+
+- [x] **3.3 Automatic Background Sync**
+  - **Details**: Installed `expo-background-fetch`, `expo-task-manager`, and `expo-network`. Created a secure headless process in `backgroundSync.ts` that safely validates network connectivity and implicitly refreshes the Supabase user session while executing. Added an Exponential Backoff strategy tracking failures in SQLite to prevent battery drain.
+  - **Impact**: Replaces manual pushing with an invisible, automatic background synchronization system that is resilient to bad cellular connections.
+
+- [x] **3.4 Move `getOverdueStores` to SQL**
+  - **Details**: Replaced the JavaScript-level filtering in `getOverdueStores()` with a fast, pure SQL query using SQLite's `julianday()` functions.
+  - **Impact**: Massively improves performance as the database grows, as the app no longer needs to load the entire store list into memory to calculate overdues.
+
+- [x] **3.4 Fix Store Balance Inconsistency**
+  - **Details**: Added strict negative balance validation to `createTransaction()` to explicitly prevent users from receiving payments that exceed the store's current debt. Adjusted `pushSyncQueue` to strictly only mark items as synced after a confirmed server success.
+  - **Impact**: Solves the negative balance bug and prevents fake "synced" statuses when network requests actually fail.
+
+---
+
+## ⚠️ Critical Pending Actions & Skipped Steps
+
+These are manual tasks or skipped architectural changes that must be resolved by the developer outside of the standard code-generation pipeline:
+
+1. **[MANUAL STEP] EAS Project Initialization (Phase 1)**
+   - **What to do**: Run `npx eas-cli init` in your terminal and log into your Expo account.
+   - **Why**: This will generate a unique UUID for your project and update `app.json` so you can compile `.apk` or `.ipa` files in the cloud.
+
+2. **[MANUAL STEP] Supabase Schema Execution (Phase 2 & 3)**
+   - **What to do**: Copy the contents of `supabase/schema.sql` and run it in your Supabase SQL Editor.
+   - **Why**: This applies the strict Row-Level Security (RLS) policies that isolate rep data, registers the `sync_transactions_batch` RPC function, and applies the triggers necessary for Pull Sync to work.
+
+3. **[SKIPPED] SQLite Encryption via SQLCipher (Phase 2)**
+   - **Status**: Intentionally skipped for now.
+   - **Why**: Adding SQLCipher encryption requires ejecting from the standard Expo Go sandbox into an Expo Development Build, which fundamentally changes how you test and run the app during development. 
 
 ---
 

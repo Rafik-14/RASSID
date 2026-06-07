@@ -86,6 +86,18 @@ BEGIN
 
     IF FOUND THEN
       inserted := inserted + 1;
+      
+      IF item ? 'items' THEN
+        INSERT INTO transaction_items (item_id, tx_id, product_id, quantity, price_at_time)
+        SELECT 
+          (i->>'item_id')::UUID,
+          (item->>'tx_id')::UUID,
+          (i->>'product_id')::UUID,
+          (i->>'quantity')::INTEGER,
+          (i->>'price_at_time')::INTEGER
+        FROM jsonb_array_elements(item->'items') AS i
+        ON CONFLICT (item_id) DO NOTHING;
+      END IF;
     END IF;
   END LOOP;
 
@@ -146,4 +158,19 @@ CREATE POLICY "Users can insert their own transaction items"
 CREATE POLICY "Authenticated users can view products"
   ON products FOR SELECT
   USING (auth.role() = 'authenticated');
+
+-- updated_at auto-update trigger for pull sync
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+   NEW.updated_at = NOW();
+   RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+DROP TRIGGER IF EXISTS update_stores_updated_at ON stores;
+CREATE TRIGGER update_stores_updated_at
+BEFORE UPDATE ON stores
+FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
 

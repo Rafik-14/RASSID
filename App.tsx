@@ -29,6 +29,7 @@ import { ProfileSetupScreen } from '@/screens/ProfileSetupScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { getSession } from '@/api/supabase';
 import { LoginScreen } from '@/screens/LoginScreen';
+import { registerBackgroundSync } from '@/services/backgroundSync';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -102,6 +103,10 @@ export default function App() {
       setReady(true);
     }
     init();
+  }, []);
+
+  useEffect(() => {
+    registerBackgroundSync();
   }, []);
 
   const onLayout = useCallback(async () => {
