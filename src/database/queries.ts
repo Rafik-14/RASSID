@@ -151,6 +151,8 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
   const db = await getDatabase();
   
   return await db.withExclusiveTransactionAsync(async () => {
+    const session = await getSession();
+    const repId = session?.user?.id ?? '';
     const txId = Crypto.randomUUID();
     const createdAt = isoNow();
     const parentHash = await getLastTxHash(input.storeId);
@@ -167,12 +169,13 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
     );
 
     await db.runAsync(
-      `INSERT INTO transactions (tx_id, store_id, tx_type, amount, reference_no, note,
+      `INSERT INTO transactions (tx_id, store_id, rep_id, tx_type, amount, reference_no, note,
         hash_signature, parent_hash, sync_status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
       [
         txId,
         input.storeId,
+        repId,
         input.txType,
         signedAmount,
         input.referenceNo ?? null,
@@ -253,10 +256,12 @@ export async function createStore(data: {
 }): Promise<Store> {
   const db = await getDatabase();
   const storeId = Crypto.randomUUID();
+  const session = await getSession();
+  const repId = session?.user?.id ?? '';
   await db.runAsync(
-    `INSERT INTO stores (store_id, name, neighborhood, contact_person, phone, address, sync_status)
-     VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-    [storeId, data.name, data.neighborhood, data.contact_person, data.phone, data.address ?? '']
+    `INSERT INTO stores (store_id, rep_id, name, neighborhood, contact_person, phone, address, sync_status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+    [storeId, repId, data.name, data.neighborhood, data.contact_person, data.phone, data.address ?? '']
   );
   return (await getStoreById(storeId))!;
 }

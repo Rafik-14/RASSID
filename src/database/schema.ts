@@ -5,6 +5,7 @@ PRAGMA journal_mode = WAL;
 
 CREATE TABLE IF NOT EXISTS stores (
   store_id TEXT PRIMARY KEY NOT NULL,
+  rep_id TEXT NOT NULL DEFAULT '',
   name TEXT NOT NULL,
   neighborhood TEXT NOT NULL DEFAULT '',
   contact_person TEXT NOT NULL DEFAULT '',
@@ -36,6 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
 CREATE TABLE IF NOT EXISTS transactions (
   tx_id TEXT PRIMARY KEY NOT NULL,
   store_id TEXT NOT NULL,
+  rep_id TEXT NOT NULL DEFAULT '',
   tx_type INTEGER NOT NULL,
   amount INTEGER NOT NULL,
   reference_no TEXT,

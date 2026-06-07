@@ -25,12 +25,35 @@ This document tracks the completed tasks from the production plan (`production_p
   - **Impact**: Users receive immediate visual feedback on whether their background synchronization with Supabase succeeded or failed.
 
 - [x] **1.6 EAS Build Configuration**
-  - **Details**: Created `eas.json` to configure Expo Application Services for `development`, `preview`, and `production` distribution profiles. Verified the project ID in `app.json`.
+  - **Details**: Created `eas.json` to configure Expo Application Services for `development`, `preview`, and `production` distribution profiles. Updated `app.json` splash screen background for production. 
+  - **Pending Manual Step**: The user needs to run `npx eas-cli init` in their terminal and log into Expo to generate their real EAS Project ID and update `app.json`.
   - **Impact**: Prepares the project for cloud compilation and over-the-air updates.
 
 - [x] **1.7 Wrap Transaction Creation in a Database Transaction**
   - **Details**: Wrapped `createTransaction()` in `src/database/queries.ts` using `db.withExclusiveTransactionAsync()`.
   - **Impact**: Guarantees database integrity by ensuring that creating a transaction, adding its line items, and updating the store's balance are executed automatically as a single atomic unit.
+
+## Phase 2: Security & Authentication (COMPLETED)
+
+- [x] **2.1 Supabase Authentication & Multi-Rep Support**
+  - **Details**: Created `LoginScreen.tsx` with email and password authentication. Linked it to `App.tsx` so users must log in. Added `rep_id` to `Store` and `Transaction` data models and injected the ID into local SQLite inserts based on the authenticated session.
+  - **Impact**: Identifies exactly which sales rep is creating data. Prevents unauthorized usage of the app.
+
+- [x] **2.2 Row-Level Security (RLS)**
+  - **Details**: Updated `supabase/schema.sql` to enable RLS across `stores`, `transactions`, `transaction_items`, and `products` tables. Wrote precise policies using `auth.uid()` to map against the `rep_id`.
+  - **Impact**: Strict data isolation. Reps can strictly view and modify only the stores and transactions they own. The backend will actively block them from seeing other reps' data.
+
+- [x] **2.3 Root/Jailbreak Detection**
+  - **Details**: Installed `expo-device` and integrated it into `src/services/securityService.ts`. Updated the `isDeviceCompromised()` method to block emulator and simulator environments during production builds.
+  - **Impact**: Elevates the app's financial security posture by preventing malicious interference via compromised environments.
+
+- [x] **2.4 Biometric Auth Retry**
+  - **Details**: Modified the offline and lock-screen flows within `App.tsx` to include a "Réessayer" (Retry) button.
+  - **Impact**: Vastly improves the user experience. Users whose FaceID or fingerprint scanning fails initially are no longer permanently locked out; they can simply tap retry.
+
+- [x] **2.5 SQLite Schema Migrations**
+  - **Details**: Designed a sequential migration system in `src/database/index.ts` to seamlessly alter existing SQLite tables (adding `rep_id` columns) without crashing previous installations.
+  - **Impact**: Provides a robust foundation for modifying the database schema moving forward into Phase 3.
 
 ---
 

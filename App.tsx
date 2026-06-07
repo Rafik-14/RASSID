@@ -24,9 +24,11 @@ import {
 import { getDatabase } from '@/database';
 import { pushSyncQueue } from '@/services/syncService';
 import { hasRepProfile, getRepProfile } from '@/services/repService';
-import { applyRepProfile } from '@/config/env';
+import { applyRepProfile, hasSupabase } from '@/config/env';
 import { ProfileSetupScreen } from '@/screens/ProfileSetupScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { getSession } from '@/api/supabase';
+import { LoginScreen } from '@/screens/LoginScreen';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -48,6 +50,7 @@ export default function App() {
   const [lockReason, setLockReason] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -75,6 +78,15 @@ export default function App() {
       }
       const profile = await getRepProfile();
       if (profile) applyRepProfile(profile.name, profile.initials);
+
+      if (hasSupabase) {
+        const session = await getSession();
+        if (!session) {
+          setShowLogin(true);
+          setReady(true);
+          return;
+        }
+      }
 
       const locked = await isOfflineLocked();
       if (locked) {
@@ -166,6 +178,29 @@ export default function App() {
     );
   }
 
+  if (showLogin) {
+    return (
+      <SafeAreaProvider onLayout={onLayout}>
+        <LoginScreen
+          onComplete={async () => {
+            setShowLogin(false);
+            const locked = await isOfflineLocked();
+            if (locked) {
+              setLockReason(
+                'Aucune synchronisation serveur depuis plus de 72 heures. Connectez-vous et synchronisez.'
+              );
+              return;
+            }
+            const ok = await authenticateUser();
+            setAuthed(ok);
+          }}
+        />
+        <StatusBar style="light" />
+        <Toast />
+      </SafeAreaProvider>
+    );
+  }
+
   if (lockReason) {
     const isSyncLock = lockReason.includes('synchronisation');
     return (
@@ -200,6 +235,16 @@ export default function App() {
         <View style={styles.splash}>
           <Text style={styles.logo}>RASSID</Text>
           <Text style={styles.lock}>Authentification requise</Text>
+          <TouchableOpacity
+            style={styles.syncButton}
+            onPress={async () => {
+              const ok = await authenticateUser();
+              setAuthed(ok);
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.syncButtonText}>Réessayer</Text>
+          </TouchableOpacity>
         </View>
         <StatusBar style="light" />
       </SafeAreaProvider>

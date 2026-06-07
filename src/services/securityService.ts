@@ -1,5 +1,6 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
+import * as Device from 'expo-device';
 import { env, hasSupabase } from '@/config/env';
 import { getLastHandshake } from './syncService';
 
@@ -46,5 +47,8 @@ export async function clearSession(): Promise<void> {
 
 /** Placeholder for root/jailbreak detection — extend with native module in production build */
 export function isDeviceCompromised(): boolean {
+  if (!Device.isDevice) {
+    return !__DEV__;
+  }
   return false;
 }

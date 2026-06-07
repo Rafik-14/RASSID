@@ -11,6 +11,7 @@ export type SyncStatus = 'pending' | 'synced' | 'conflict';
 
 export interface Store {
   store_id: string;
+  rep_id: string;
   name: string;
   neighborhood: string;
   contact_person: string;
@@ -37,6 +38,7 @@ export interface Product {
 export interface Transaction {
   tx_id: string;
   store_id: string;
+  rep_id: string;
   tx_type: TxType;
   amount: number;
   reference_no: string | null;

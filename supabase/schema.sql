@@ -3,6 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS stores (
   store_id UUID PRIMARY KEY,
+  rep_id TEXT DEFAULT '',
   name VARCHAR(255) NOT NULL,
   neighborhood VARCHAR(100) DEFAULT '',
   contact_person VARCHAR(100) DEFAULT '',
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS transactions (
   tx_id UUID PRIMARY KEY,
   store_id UUID NOT NULL REFERENCES stores(store_id),
+  rep_id TEXT DEFAULT '',
   tx_type SMALLINT NOT NULL,
   amount INTEGER NOT NULL,
   reference_no VARCHAR(50),
@@ -65,11 +67,12 @@ BEGIN
   FOR item IN SELECT * FROM jsonb_array_elements(payload)
   LOOP
     INSERT INTO transactions (
-      tx_id, store_id, tx_type, amount, reference_no, note,
+      tx_id, store_id, rep_id, tx_type, amount, reference_no, note,
       hash_signature, parent_hash, sync_status, created_at
     ) VALUES (
       (item->>'tx_id')::UUID,
       (item->>'store_id')::UUID,
+      auth.uid()::TEXT,
       (item->>'tx_type')::SMALLINT,
       (item->>'amount')::INTEGER,
       item->>'reference_no',
@@ -89,3 +92,58 @@ BEGIN
   RETURN jsonb_build_object('inserted', inserted);
 END;
 $$;
+
+-- Enable RLS on all tables
+ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transaction_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+
+-- Stores: users can only access their own stores
+CREATE POLICY "Users can view their own stores"
+  ON stores FOR SELECT
+  USING (rep_id = auth.uid()::TEXT);
+
+CREATE POLICY "Users can insert their own stores"
+  ON stores FOR INSERT
+  WITH CHECK (rep_id = auth.uid()::TEXT);
+
+CREATE POLICY "Users can update their own stores"
+  ON stores FOR UPDATE
+  USING (rep_id = auth.uid()::TEXT);
+
+-- Transactions: users can only access their own
+CREATE POLICY "Users can view their own transactions"
+  ON transactions FOR SELECT
+  USING (rep_id = auth.uid()::TEXT);
+
+CREATE POLICY "Users can insert their own transactions"
+  ON transactions FOR INSERT
+  WITH CHECK (rep_id = auth.uid()::TEXT);
+
+-- Transaction items: access via transaction ownership
+CREATE POLICY "Users can view their own transaction items"
+  ON transaction_items FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM transactions t
+      WHERE t.tx_id = transaction_items.tx_id
+      AND t.rep_id = auth.uid()::TEXT
+    )
+  );
+
+CREATE POLICY "Users can insert their own transaction items"
+  ON transaction_items FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM transactions t
+      WHERE t.tx_id = transaction_items.tx_id
+      AND t.rep_id = auth.uid()::TEXT
+    )
+  );
+
+-- Products: all authenticated users can read, only admins can write
+CREATE POLICY "Authenticated users can view products"
+  ON products FOR SELECT
+  USING (auth.role() = 'authenticated');
+
