@@ -96,6 +96,28 @@ This document tracks the completed tasks from the production plan (`production_p
   - **Details**: Fixed a missing `getSession` import that caused a `ReferenceError`. Wrapped the `confirm()` function in `NewOperationScreen` with a `try/catch` block connected to the Toast notification system.
   - **Impact**: Operations that fail (e.g. attempting to pay more than the store's debt) no longer fail silently; the user now receives a clear red error message explaining exactly why the save was rejected.
 
+## Phase 4: Feature Completeness (COMPLETED)
+
+- [x] **4.1 Store Editing & Deletion**
+  - **Details**: Created `EditStoreScreen.tsx` to allow updating store information. Implemented soft deletion by setting `is_deleted = 1` in the database. Added UI controls to edit or delete a store from `StoreProfileScreen.tsx`.
+  - **Impact**: Reps can now correct store details or mark inactive stores as deleted, keeping their local list clean and accurate.
+
+- [x] **4.2 Store Picker Enhancement**
+  - **Details**: Replaced the hardcoded `.slice(0, 10)` limit in `NewOperationScreen.tsx` with a dynamic, searchable `<TextInput>` that filters a bounding `<ScrollView>`.
+  - **Impact**: Reps with large territories (e.g. 50+ stores) can now easily locate and select the correct store without scrolling endlessly.
+
+- [x] **4.3 Add "Avoir" to History Filter**
+  - **Details**: Appended the `{ id: 'avoir', l: 'Avoirs' }` option to the `FILTERS` array in `StoreHistoryScreen.tsx`.
+  - **Impact**: Provides full parity with all transaction types, allowing users to isolate return/credit transactions easily.
+
+- [x] **4.4 Input Validation**
+  - **Details**: Applied strict `maxLength` attributes to all `TextInput` components across store creation, profile setup, and operations. Added a defensive `Alert.alert` dialog in `NewOperationScreen.tsx` that triggers before saving any transaction with a total value >= 50,000 DA.
+  - **Impact**: Prevents database clutter from overly long inputs and acts as a critical safety net against accidental "fat-finger" data entry errors (e.g., entering 500000 instead of 5000).
+
+- [x] **4.5 Sync Engine Fix (Foreign Key Constraint)**
+  - **Details**: Modified `syncService.ts` to push `is_deleted` status to Supabase instead of completely excluding deleted stores from the upload queue.
+  - **Impact**: Fixes a critical sync crash. When a store is deleted locally, Supabase now properly registers the deletion. This ensures any associated transactions uploaded afterward do not trigger a "foreign key constraint" violation on the server.
+
 ---
 
 ## ⚠️ Critical Pending Actions & Skipped Steps

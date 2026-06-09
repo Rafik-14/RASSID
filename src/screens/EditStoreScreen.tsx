@@ -20,12 +20,12 @@ import { BlurView } from 'expo-blur';
 import Toast from 'react-native-toast-message';
 import type { RootStackParamList } from '@/navigation/types';
 
-const FIELDS: { key: string; label: string; required?: boolean; placeholder?: string; keyboardType?: any }[] = [
-  { key: 'name', label: 'Nom du magasin', required: true, placeholder: 'Ex. Épicerie Ben Ali' },
-  { key: 'neighborhood', label: 'Quartier', placeholder: 'Ex. El Biar' },
-  { key: 'contact_person', label: 'Gérant', placeholder: 'Ex. Karim Ben Ali' },
-  { key: 'phone', label: 'Téléphone', placeholder: '0555 12 34 56', keyboardType: 'phone-pad' },
-  { key: 'address', label: 'Adresse', placeholder: 'Rue, ville' },
+const FIELDS: { key: string; label: string; required?: boolean; placeholder?: string; keyboardType?: any; maxLength?: number }[] = [
+  { key: 'name', label: 'Nom du magasin', required: true, placeholder: 'Ex. Épicerie Ben Ali', maxLength: 100 },
+  { key: 'neighborhood', label: 'Quartier', placeholder: 'Ex. El Biar', maxLength: 80 },
+  { key: 'contact_person', label: 'Gérant', placeholder: 'Ex. Karim Ben Ali', maxLength: 80 },
+  { key: 'phone', label: 'Téléphone', placeholder: '0555 12 34 56', keyboardType: 'phone-pad', maxLength: 20 },
+  { key: 'address', label: 'Adresse', placeholder: 'Rue, ville', maxLength: 200 },
 ];
 
 export function EditStoreScreen() {
@@ -125,6 +125,7 @@ export function EditStoreScreen() {
                   placeholder={f.placeholder}
                   placeholderTextColor={c.white40}
                   keyboardType={f.keyboardType || 'default'}
+                  maxLength={f.maxLength}
                   style={styles.input}
                 />
               </View>

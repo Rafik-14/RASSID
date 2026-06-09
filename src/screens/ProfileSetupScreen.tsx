@@ -100,6 +100,7 @@ export function ProfileSetupScreen({ onComplete }: Props) {
                 autoCapitalize="words"
                 returnKeyType="next"
                 style={styles.fieldInput}
+                maxLength={80}
               />
             </View>
 

@@ -109,6 +109,7 @@ export function ProfileEditScreen() {
                 autoCapitalize="words"
                 returnKeyType="next"
                 style={styles.fieldInput}
+                maxLength={80}
               />
             </View>
 

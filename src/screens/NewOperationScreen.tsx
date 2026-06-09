@@ -11,6 +11,7 @@ import {
   Animated as RNAnimated,
   Easing as RNEasing,
   Modal,
+  Alert,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -227,39 +228,59 @@ export function NewOperationScreen() {
           }))
         : undefined;
 
-      const tx = await createTransaction({
-        storeId,
-        txType,
-        amount: total,
-        note: note || productSummary || activeType.label,
-        items: itemsToSave,
-        referenceNo: `BL-${Date.now().toString(36).toUpperCase()}`,
-      });
+      const saveOperation = async () => {
+        try {
+          const tx = await createTransaction({
+            storeId,
+            txType,
+            amount: total,
+            note: note || productSummary || activeType.label,
+            items: itemsToSave,
+            referenceNo: `BL-${Date.now().toString(36).toUpperCase()}`,
+          });
 
-      await refresh();
+          await refresh();
 
-      if (isLiv) {
-        const print = await printDeliveryNote({
-          store,
-          transaction: tx,
-          items: itemsToSave?.map(i => ({
-            item_id: '',
-            tx_id: tx.tx_id,
-            product_id: i.productId,
-            quantity: i.quantity,
-            price_at_time: i.priceAtTime,
-            product_name: articles.find(a => a.id === i.productId)?.name,
-          })) ?? [],
-        });
-        Toast.show({ type: 'success', text1: 'Livraison enregistrée', text2: print.message });
+          if (isLiv) {
+            const print = await printDeliveryNote({
+              store,
+              transaction: tx,
+              items: itemsToSave?.map(i => ({
+                item_id: '',
+                tx_id: tx.tx_id,
+                product_id: i.productId,
+                quantity: i.quantity,
+                price_at_time: i.priceAtTime,
+                product_name: articles.find(a => a.id === i.productId)?.name,
+              })) ?? [],
+            });
+            Toast.show({ type: 'success', text1: 'Livraison enregistrée', text2: print.message });
+          } else {
+            Toast.show({ type: 'success', text1: 'Opération enregistrée', text2: `${activeType.label} confirmée.` });
+          }
+
+          navigation.goBack();
+        } catch (e: any) {
+          console.error(e);
+          Toast.show({ type: 'error', text1: 'Erreur', text2: e.message || 'Impossible de sauvegarder la transaction.' });
+        }
+      };
+
+      if (total >= 50000) {
+        Alert.alert(
+          'Confirmer le montant',
+          `Vous êtes sur le point d'enregistrer une opération de ${formatDAFull(total).replace(' DA', '')} DA. Continuer ?`,
+          [
+            { text: 'Annuler', style: 'cancel' },
+            { text: 'Confirmer', onPress: saveOperation }
+          ]
+        );
       } else {
-        Toast.show({ type: 'success', text1: 'Opération enregistrée', text2: `${activeType.label} confirmée.` });
+        await saveOperation();
       }
-
-      navigation.goBack();
     } catch (e: any) {
       console.error(e);
-      Toast.show({ type: 'error', text1: 'Erreur', text2: e.message || 'Impossible de sauvegarder la transaction.' });
+      Toast.show({ type: 'error', text1: 'Erreur', text2: e.message || 'Erreur inattendue.' });
     }
   };
 
@@ -449,6 +470,7 @@ export function NewOperationScreen() {
                 keyboardType="number-pad"
                 placeholder="0"
                 placeholderTextColor={c.white40}
+                maxLength={10}
               />
             </View>
             <View style={styles.amountPresets}>
@@ -482,6 +504,7 @@ export function NewOperationScreen() {
               onChangeText={setNote}
               placeholder="Ex: Paiement en espèces"
               placeholderTextColor={c.white40}
+              maxLength={200}
             />
           </View>
         </View>
@@ -703,6 +726,7 @@ export function NewOperationScreen() {
                       placeholderTextColor={c.white40}
                       value={newProductName}
                       onChangeText={setNewProductName}
+                      maxLength={100}
                     />
                   </View>
                 </View>
@@ -719,6 +743,7 @@ export function NewOperationScreen() {
                       value={newProductPrice}
                       onChangeText={setNewProductPrice}
                       keyboardType="numeric"
+                      maxLength={8}
                     />
                   </View>
                 </View>
@@ -735,6 +760,7 @@ export function NewOperationScreen() {
                       value={newProductBarcode}
                       onChangeText={setNewProductBarcode}
                       keyboardType="numeric"
+                      maxLength={13}
                     />
                   </View>
                 </View>

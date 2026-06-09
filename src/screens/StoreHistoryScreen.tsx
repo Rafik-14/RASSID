@@ -28,6 +28,7 @@ const FILTERS: { id: HistoryFilter; l: string }[] = [
   { id: 'livraison', l: 'Livraisons' },
   { id: 'paiement', l: 'Paiements' },
   { id: 'retour', l: 'Retours' },
+  { id: 'avoir', l: 'Avoirs' },
 ];
 
 function groupByDate(txs: Transaction[]): Map<string, Transaction[]> {
