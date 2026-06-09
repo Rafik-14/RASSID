@@ -60,6 +60,7 @@ export function NewOperationScreen() {
   const [storeId, setStoreId] = useState<string | undefined>(route.params?.storeId);
   const [store, setStore] = useState<Store | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
+  const [searchStore, setSearchStore] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   
   // Articles for 'livraison'
@@ -352,19 +353,36 @@ export function NewOperationScreen() {
             </Pressable>
           ) : (
             <View style={styles.storePicker}>
-              {stores.slice(0, 10).map((s) => (
-                <Pressable
-                  key={s.store_id}
-                  style={styles.storePickerItem}
-                  onPress={() => {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setStoreId(s.store_id);
-                    setStore(s);
-                  }}
-                >
-                  <Text style={styles.storePickerName}>{s.name}</Text>
-                </Pressable>
-              ))}
+              <View style={[styles.modalSearchRow, { paddingHorizontal: 0, marginTop: 4, marginBottom: 10 }]}>
+                <LinearGradient colors={['#1d1d1d', '#161616']} style={styles.modalSearchInputContainer}>
+                  <Search size={15} color={c.white40} strokeWidth={2} />
+                  <TextInput
+                    style={styles.modalSearchInput}
+                    placeholder="Rechercher un magasin…"
+                    placeholderTextColor={c.white40}
+                    value={searchStore}
+                    onChangeText={setSearchStore}
+                  />
+                </LinearGradient>
+              </View>
+              <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                {stores
+                  .filter((s) => s.name.toLowerCase().includes(searchStore.toLowerCase()))
+                  .map((s) => (
+                    <Pressable
+                      key={s.store_id}
+                      style={styles.storePickerItem}
+                      onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setStoreId(s.store_id);
+                        setStore(s);
+                        setSearchStore('');
+                      }}
+                    >
+                      <Text style={styles.storePickerName}>{s.name}</Text>
+                    </Pressable>
+                  ))}
+              </ScrollView>
               <Text style={{ fontSize: 11, color: c.white40, textAlign: 'center', marginTop: 8 }}>
                 Recherchez ou sélectionnez un magasin ci-dessus
               </Text>
