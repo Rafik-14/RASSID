@@ -235,6 +235,66 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
   return resultTx!;
 }
 
+export async function voidTransaction(originalTx: Transaction): Promise<Transaction> {
+  const db = await getDatabase();
+  let resultTx: Transaction | null = null;
+  
+  await db.withExclusiveTransactionAsync(async (txn: any) => {
+    // Check if already voided
+    const existing = await txn.getFirstAsync('SELECT * FROM transactions WHERE reference_no = ?', [`VOID-${originalTx.tx_id}`]);
+    if (existing) throw new Error('Transaction déjà annulée.');
+
+    const session = await getSession();
+    const repId = session?.user?.id ?? '';
+    const txId = Crypto.randomUUID();
+    const createdAt = isoNow();
+    const parentHash = await getLastTxHash(originalTx.store_id);
+    
+    const reverseAmount = -originalTx.amount;
+
+    const hash = await computeTxHash(
+      txId,
+      originalTx.store_id,
+      originalTx.tx_type,
+      reverseAmount,
+      createdAt,
+      parentHash
+    );
+
+    await txn.runAsync(
+      `INSERT INTO transactions (tx_id, store_id, rep_id, tx_type, amount, reference_no, note,
+        hash_signature, parent_hash, sync_status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+      [
+        txId,
+        originalTx.store_id,
+        repId,
+        originalTx.tx_type,
+        reverseAmount,
+        `VOID-${originalTx.tx_id}`,
+        `Annulation`,
+        hash,
+        parentHash,
+        createdAt,
+      ]
+    );
+
+    const balanceDelta = reverseAmount;
+    const store = await getStoreById(originalTx.store_id);
+    if (store) {
+      const newBalance = store.current_balance + balanceDelta;
+      await txn.runAsync(
+        `UPDATE stores SET current_balance = ?, sync_status = 'pending' WHERE store_id = ?`,
+        [newBalance, originalTx.store_id]
+      );
+    }
+    
+    resultTx = await txn.getFirstAsync('SELECT * FROM transactions WHERE tx_id = ?', [txId]);
+  });
+  
+  return resultTx as unknown as Transaction;
+}
+
 export async function getTransactionItems(txId: string): Promise<TransactionItem[]> {
   const db = await getDatabase();
   return db.getAllAsync<TransactionItem>(
@@ -312,5 +372,18 @@ export async function softDeleteStore(storeId: string): Promise<void> {
   await db.runAsync(
     `UPDATE stores SET is_deleted = 1, sync_status = 'pending' WHERE store_id = ?`,
     [storeId]
+  );
+}
+
+export async function getGlobalTransactions(txType: number, limit: number = 100): Promise<Transaction[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<Transaction>(
+    `SELECT t.*, s.name as store_name 
+     FROM transactions t
+     LEFT JOIN stores s ON t.store_id = s.store_id
+     WHERE t.tx_type = ?
+     ORDER BY t.created_at DESC
+     LIMIT ?`,
+    [txType, limit]
   );
 }

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, ScrollView, Text, StyleSheet, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, ScrollView, Text, StyleSheet, LayoutAnimation, Platform, UIManager, Alert } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { ArrowDown, ArrowUp, Filter } from 'lucide-react-native';
@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBg, Pressable, Eyebrow, AnimatedNumber } from '@/components/Chrome';
 import { TopBar } from '@/components/TopBar';
 import { c } from '@/components/tokens';
-import { getStoreTransactions } from '@/database/queries';
+import { getStoreTransactions, voidTransaction } from '@/database/queries';
 import type { Transaction, HistoryFilter } from '@/types';
 import { TX_LABELS } from '@/types';
 import type { RootStackParamList } from '@/navigation/types';
@@ -83,7 +83,52 @@ export function StoreHistoryScreen() {
     setFilter(f);
   };
 
-  const grouped = groupByDate(txs);
+  const voidedTxIds = new Set(
+    txs.filter(t => t.reference_no?.startsWith('VOID-')).map(t => t.reference_no!.replace('VOID-', ''))
+  );
+
+  const displayTxs = txs.filter(t => !t.reference_no?.startsWith('VOID-'));
+  const grouped = groupByDate(displayTxs);
+  
+  const handleTxPress = (tx: Transaction) => {
+    if (voidedTxIds.has(tx.tx_id)) {
+      Toast.show({ type: 'info', text1: 'Info', text2: 'Cette opération est déjà annulée.' });
+      return;
+    }
+    Alert.alert(
+      'Options de l\'opération',
+      `Que voulez-vous faire avec cette opération de ${formatDAFull(tx.amount).replace(' DA', '')} DA ?`,
+      [
+        { text: 'Fermer', style: 'cancel' },
+        { 
+          text: 'Annuler l\'opération', 
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Confirmation',
+              'Êtes-vous sûr de vouloir annuler cette opération ? Cette action créera une opération d\'annulation.',
+              [
+                { text: 'Non', style: 'cancel' },
+                {
+                  text: 'Oui, annuler',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await voidTransaction(tx);
+                      Toast.show({ type: 'success', text1: 'Succès', text2: 'Opération annulée avec succès.' });
+                      load();
+                    } catch (e: any) {
+                      Toast.show({ type: 'error', text1: 'Erreur', text2: e.message || 'Impossible d\'annuler.' });
+                    }
+                  }
+                }
+              ]
+            );
+          }
+        }
+      ]
+    );
+  };
   
   // Calculate month net
   let sortant = 0;
@@ -181,25 +226,31 @@ export function StoreHistoryScreen() {
                 {dayTxs.map((tx, i) => {
                   const color = txColor(tx.tx_type);
                   const time = tx.created_at.slice(11, 16); // basic HH:MM
+                  const isVoided = voidedTxIds.has(tx.tx_id);
                   return (
                     <Animated.View 
                       key={tx.tx_id} 
                       entering={FadeInUp.delay(i * 40).duration(300)}
-                      style={[styles.txRow, i === dayTxs.length - 1 && { borderBottomWidth: 0 }]}
                     >
-                      <View style={[styles.txLine, { backgroundColor: color, shadowColor: color }]} />
-                      <View style={styles.txMid}>
-                        <View style={styles.txMidTop}>
-                          <Text style={styles.txType}>{TX_LABELS[tx.tx_type as 1]}</Text>
-                          <Text style={styles.txTime}>· {time}</Text>
+                      <Pressable 
+                        stretch={false}
+                        onPress={() => handleTxPress(tx)}
+                        style={[styles.txRow, i === dayTxs.length - 1 && { borderBottomWidth: 0 }, isVoided && { opacity: 0.4 }]}
+                      >
+                        <View style={[styles.txLine, { backgroundColor: color, shadowColor: color }]} />
+                        <View style={styles.txMid}>
+                          <View style={styles.txMidTop}>
+                            <Text style={[styles.txType, isVoided && { textDecorationLine: 'line-through' }]}>{TX_LABELS[tx.tx_type as 1]}</Text>
+                            <Text style={styles.txTime}>· {time}</Text>
+                          </View>
+                          <Text style={[styles.txNote, isVoided && { textDecorationLine: 'line-through' }]} numberOfLines={1}>
+                            {tx.note || '—'}
+                          </Text>
                         </View>
-                        <Text style={styles.txNote} numberOfLines={1}>
-                          {tx.note || '—'}
+                        <Text style={[styles.txAmount, { color }, isVoided && { textDecorationLine: 'line-through' }]}>
+                          {tx.amount > 0 ? '+' : ''}{formatDAFull(tx.amount)}
                         </Text>
-                      </View>
-                      <Text style={[styles.txAmount, { color }]}>
-                        {tx.amount > 0 ? '+' : ''}{formatDAFull(tx.amount)}
-                      </Text>
+                      </Pressable>
                     </Animated.View>
                   );
                 })}
