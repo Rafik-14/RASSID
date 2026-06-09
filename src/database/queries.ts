@@ -287,3 +287,30 @@ export async function createProduct(data: {
   const row = await db.getFirstAsync<Product>('SELECT * FROM products WHERE product_id = ?', [productId]);
   return row!;
 }
+
+export async function updateStore(storeId: string, data: {
+  name: string;
+  neighborhood: string;
+  contact_person: string;
+  phone: string;
+  address?: string;
+}): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE stores SET name = ?, neighborhood = ?, contact_person = ?, phone = ?, address = ?,
+     sync_status = 'pending' WHERE store_id = ?`,
+    [data.name, data.neighborhood, data.contact_person, data.phone, data.address ?? '', storeId]
+  );
+}
+
+export async function softDeleteStore(storeId: string): Promise<void> {
+  const db = await getDatabase();
+  const store = await getStoreById(storeId);
+  if (store && store.current_balance > 0) {
+    throw new Error('Impossible de supprimer un magasin avec une dette en cours.');
+  }
+  await db.runAsync(
+    `UPDATE stores SET is_deleted = 1, sync_status = 'pending' WHERE store_id = ?`,
+    [storeId]
+  );
+}

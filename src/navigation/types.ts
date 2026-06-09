@@ -6,6 +6,7 @@ export type RootStackParamList = {
   StoreHistory: { storeId: string };
   NewOperation: { storeId?: string; type?: OperationType };
   NewStore: undefined;
+  EditStore: { storeId: string };
   OverdueAlerts: undefined;
   AuthLock: { reason: string };
   ProfileEdit: undefined;

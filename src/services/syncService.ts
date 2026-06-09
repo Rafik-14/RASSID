@@ -1,7 +1,7 @@
 import { getDatabase } from '@/database';
 import { getSupabase } from '@/api/supabase';
 import { hasSupabase } from '@/config/env';
-import type { Store, Transaction } from '@/types';
+import type { Store, Transaction, TransactionItem } from '@/types';
 import { pullFromServer } from './pullSync';
 
 export interface SyncResult {
@@ -53,7 +53,7 @@ export async function pushSyncQueue(): Promise<SyncResult> {
 
   const db = await getDatabase();
   const pendingStores = await db.getAllAsync<Store>(
-    `SELECT * FROM stores WHERE sync_status = 'pending' AND is_deleted = 0`
+    `SELECT * FROM stores WHERE sync_status = 'pending'`
   );
 
   if (pendingStores.length > 0) {
@@ -74,6 +74,7 @@ export async function pushSyncQueue(): Promise<SyncResult> {
           last_delivery_date: s.last_delivery_date,
           last_payment_date: s.last_payment_date,
           sync_status: 'synced',
+          is_deleted: !!s.is_deleted,
         })),
         { onConflict: 'store_id' }
       );

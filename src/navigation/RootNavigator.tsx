@@ -7,6 +7,7 @@ import { StoreProfileScreen } from '@/screens/StoreProfileScreen';
 import { StoreHistoryScreen } from '@/screens/StoreHistoryScreen';
 import { NewOperationScreen } from '@/screens/NewOperationScreen';
 import { NewStoreScreen } from '@/screens/NewStoreScreen';
+import { EditStoreScreen } from '@/screens/EditStoreScreen';
 import { OverdueAlertsScreen } from '@/screens/OverdueAlertsScreen';
 import { AuthLockScreen } from '@/screens/AuthLockScreen';
 import { ProfileEditScreen } from '@/screens/ProfileEditScreen';
@@ -27,6 +28,7 @@ export function RootNavigator() {
       <Stack.Screen name="StoreHistory" component={StoreHistoryScreen} />
       <Stack.Screen name="NewOperation" component={NewOperationScreen} />
       <Stack.Screen name="NewStore" component={NewStoreScreen} />
+      <Stack.Screen name="EditStore" component={EditStoreScreen} />
       <Stack.Screen name="OverdueAlerts" component={OverdueAlertsScreen} />
       <Stack.Screen name="AuthLock" component={AuthLockScreen} />
       <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />

@@ -6,16 +6,17 @@ import {
   StyleSheet,
   Linking,
   Platform,
+  Alert,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Phone, MessageCircle, MapPin, Car, Banknote, Undo2, Tag, ArrowUpRight } from 'lucide-react-native';
+import { Phone, MessageCircle, MapPin, Car, Banknote, Undo2, Tag, ArrowUpRight, Edit2, Trash2 } from 'lucide-react-native';
 import { StatusBg, Pressable, ElevatedCard, AnimatedNumber, Eyebrow, GradientText } from '@/components/Chrome';
 import { TopBar } from '@/components/TopBar';
 import { c } from '@/components/tokens';
-import { getStoreById } from '@/database/queries';
+import { getStoreById, softDeleteStore } from '@/database/queries';
 import type { Store, OperationType } from '@/types';
 import type { RootStackParamList } from '@/navigation/types';
 import { formatDAFull } from '@/utils/currency';
@@ -43,7 +44,7 @@ export function StoreProfileScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const insets = useSafeAreaInsets();
-  const { refreshKey } = useApp();
+  const { refreshKey, refresh } = useApp();
   const [store, setStore] = useState<Store | null>(null);
 
   const load = useCallback(async () => {
@@ -95,6 +96,30 @@ export function StoreProfileScreen() {
     }
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Supprimer le magasin',
+      `Êtes-vous sûr de vouloir supprimer ${store.name} ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { 
+          text: 'Supprimer', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await softDeleteStore(store.store_id);
+              refresh();
+              Toast.show({ type: 'success', text1: 'Succès', text2: 'Magasin supprimé' });
+              navigation.goBack();
+            } catch (e: any) {
+              Toast.show({ type: 'error', text1: 'Erreur', text2: e.message });
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <StatusBg>
       <TopBar title={store.name} onBack={() => navigation.goBack()} rightIcon="none" />
@@ -122,6 +147,11 @@ export function StoreProfileScreen() {
           </View>
 
           <View style={styles.quickActions}>
+            <Pressable stretch={false} onPress={() => navigation.navigate('EditStore', { storeId: store.store_id })} style={styles.quickActionBtn}>
+              <LinearGradient colors={['#1d1d1d', '#161616']} style={StyleSheet.absoluteFillObject} />
+              <Edit2 size={13} color={c.white} strokeWidth={2.2} />
+              <Text style={styles.quickActionText}>Éditer</Text>
+            </Pressable>
             <Pressable stretch={false} onPress={handlePhone} style={styles.quickActionBtn}>
               <LinearGradient colors={['#1d1d1d', '#161616']} style={StyleSheet.absoluteFillObject} />
               <Phone size={13} color={c.white} strokeWidth={2.2} />
@@ -187,6 +217,14 @@ export function StoreProfileScreen() {
             <LinearGradient colors={['#1d1d1d', '#141414']} style={StyleSheet.absoluteFillObject} />
             <Text style={styles.historyText}>Historique des opérations</Text>
             <ArrowUpRight size={14} color={c.lime} strokeWidth={2.5} />
+          </Pressable>
+        </View>
+
+        <View style={[styles.historyWrapper, { marginTop: 12 }]}>
+          <Pressable onPress={handleDelete} style={[styles.historyBtn, { borderColor: 'rgba(255, 77, 77, 0.3)' }]}>
+            <LinearGradient colors={['rgba(255, 77, 77, 0.1)', 'rgba(255, 77, 77, 0.05)']} style={StyleSheet.absoluteFillObject} />
+            <Text style={[styles.historyText, { color: c.red }]}>Supprimer le magasin</Text>
+            <Trash2 size={14} color={c.red} strokeWidth={2.5} />
           </Pressable>
         </View>
       </ScrollView>

@@ -114,6 +114,10 @@ These are manual tasks or skipped architectural changes that must be resolved by
    - **What to do**: Before pushing the final app to production, go to Supabase Dashboard → Authentication → Providers → Email, and turn **ON** "Confirm email".
    - **Why**: We temporarily disabled it for easier testing, but in a real production environment, users must verify their email addresses to ensure account security and prevent spam.
 
+4. **[MANUAL STEP] Seed Production Supabase with Initial Data (Pre-Release)**
+   - **What to do**: Ensure your real product catalog and initial store list are added to Supabase (e.g., via CSV import, Dashboard, or running `seed_products.sql`/`seed_stores.sql`) *before* your sales reps start creating transactions in the field.
+   - **Why**: The mobile app is designed to pull products from the server. During development, fake local seed data bypassed this flow. If a rep creates a transaction for a product or store that does not exist in the Supabase database, the server will reject the sync with a "foreign key constraint" violation.
+
 ---
 
 *Note: Update this file as subsequent phases from the `production_plan.md` are completed.*
