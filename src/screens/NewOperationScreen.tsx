@@ -207,54 +207,59 @@ export function NewOperationScreen() {
   }, [activeIndex, segmentLayout.width]);
 
   const confirm = async () => {
-    if (!storeId || !store) {
-      Toast.show({ type: 'error', text1: 'Magasin requis', text2: 'Sélectionnez un magasin.' });
-      return;
-    }
-    if (total <= 0) {
-      Toast.show({ type: 'error', text1: 'Montant invalide', text2: 'Entrez un montant supérieur à 0.' });
-      return;
-    }
+    try {
+      if (!storeId || !store) {
+        Toast.show({ type: 'error', text1: 'Magasin requis', text2: 'Sélectionnez un magasin.' });
+        return;
+      }
+      if (total <= 0) {
+        Toast.show({ type: 'error', text1: 'Montant invalide', text2: 'Entrez un montant supérieur à 0.' });
+        return;
+      }
 
-    const txType = operationToTxType[type];
-    const itemsToSave = isLiv
-      ? articles.filter(a => a.qty > 0).map(a => ({
-          productId: a.id,
-          quantity: a.qty,
-          priceAtTime: a.price,
-        }))
-      : undefined;
+      const txType = operationToTxType[type];
+      const itemsToSave = isLiv
+        ? articles.filter(a => a.qty > 0).map(a => ({
+            productId: a.id,
+            quantity: a.qty,
+            priceAtTime: a.price,
+          }))
+        : undefined;
 
-    const tx = await createTransaction({
-      storeId,
-      txType,
-      amount: total,
-      note: note || productSummary || activeType.label,
-      items: itemsToSave,
-      referenceNo: `BL-${Date.now().toString(36).toUpperCase()}`,
-    });
-
-    await refresh();
-
-    if (isLiv) {
-      const print = await printDeliveryNote({
-        store,
-        transaction: tx,
-        items: itemsToSave?.map(i => ({
-          item_id: '',
-          tx_id: tx.tx_id,
-          product_id: i.productId,
-          quantity: i.quantity,
-          price_at_time: i.priceAtTime,
-          product_name: articles.find(a => a.id === i.productId)?.name,
-        })) ?? [],
+      const tx = await createTransaction({
+        storeId,
+        txType,
+        amount: total,
+        note: note || productSummary || activeType.label,
+        items: itemsToSave,
+        referenceNo: `BL-${Date.now().toString(36).toUpperCase()}`,
       });
-      Toast.show({ type: 'success', text1: 'Livraison enregistrée', text2: print.message });
-    } else {
-      Toast.show({ type: 'success', text1: 'Opération enregistrée', text2: `${activeType.label} confirmée.` });
-    }
 
-    navigation.goBack();
+      await refresh();
+
+      if (isLiv) {
+        const print = await printDeliveryNote({
+          store,
+          transaction: tx,
+          items: itemsToSave?.map(i => ({
+            item_id: '',
+            tx_id: tx.tx_id,
+            product_id: i.productId,
+            quantity: i.quantity,
+            price_at_time: i.priceAtTime,
+            product_name: articles.find(a => a.id === i.productId)?.name,
+          })) ?? [],
+        });
+        Toast.show({ type: 'success', text1: 'Livraison enregistrée', text2: print.message });
+      } else {
+        Toast.show({ type: 'success', text1: 'Opération enregistrée', text2: `${activeType.label} confirmée.` });
+      }
+
+      navigation.goBack();
+    } catch (e: any) {
+      console.error(e);
+      Toast.show({ type: 'error', text1: 'Erreur', text2: e.message || 'Impossible de sauvegarder la transaction.' });
+    }
   };
 
   return (
@@ -466,12 +471,13 @@ export function NewOperationScreen() {
       </ScrollView>
 
       {/* Action Dock */}
-      <View style={[styles.dockContainer, { paddingBottom: (insets.bottom || 24) + 12, paddingTop: 48 }]}>
-        <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <View style={[styles.dockContainer, { paddingBottom: (insets.bottom || 24) + 12, paddingTop: 48 }]} pointerEvents="box-none">
+        <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} pointerEvents="none" />
         <LinearGradient
           colors={['rgba(10,10,10,0)', 'rgba(10,10,10,0.6)', '#0A0A0A']}
           locations={[0, 0.5, 0.9]}
           style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
         />
         <View style={styles.dockInner}>
           {isLiv && (

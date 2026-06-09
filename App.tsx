@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from 'react';
 import Toast from 'react-native-toast-message';

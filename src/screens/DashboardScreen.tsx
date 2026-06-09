@@ -239,6 +239,37 @@ export function DashboardScreen() {
             </Pressable>
           ))}
         </View>
+
+        {/* DEV Wipe Button */}
+        {__DEV__ && (
+          <Pressable
+            onPress={async () => {
+              try {
+                const { getSupabase } = require('@/api/supabase');
+                const supabase = getSupabase();
+                if (supabase) {
+                  await supabase.auth.signOut();
+                }
+                const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+                const SecureStore = require('expo-secure-store');
+                await AsyncStorage.removeItem('supabase_session');
+                await AsyncStorage.removeItem('rep_profile');
+                await SecureStore.deleteItemAsync('supabase_encryption_key');
+                const { getDatabase } = require('@/database');
+                const db = await getDatabase();
+                await db.execAsync('PRAGMA foreign_keys = OFF; DROP TABLE IF EXISTS transaction_items; DROP TABLE IF EXISTS transactions; DROP TABLE IF EXISTS products; DROP TABLE IF EXISTS stores; DROP TABLE IF EXISTS sync_meta; PRAGMA foreign_keys = ON; PRAGMA user_version = 0;');
+                Toast.show({ type: 'success', text1: 'App Reset', text2: 'Please restart the Expo Go app completely!' });
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+            style={{ marginHorizontal: 22, marginTop: 40, padding: 16, backgroundColor: 'rgba(255,0,0,0.1)', borderRadius: 12, alignItems: 'center' }}
+          >
+            <Text style={{ color: '#ff4444', fontFamily: 'Inter_600SemiBold' }}>DEV: Réinitialiser l'app</Text>
+          </Pressable>
+        )}
+
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* FAB */}

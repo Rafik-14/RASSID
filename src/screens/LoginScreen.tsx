@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { signIn } from '@/api/supabase';
+import { signIn, signUp } from '@/api/supabase';
 import { colors } from '@/config/theme';
 import Toast from 'react-native-toast-message';
 
@@ -12,18 +12,24 @@ export function LoginScreen({ onComplete }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleLogin = async () => {
+  const handleAuth = async () => {
     if (!email || !password) {
       Toast.show({ type: 'error', text1: 'Erreur', text2: 'Veuillez remplir tous les champs.' });
       return;
     }
     setLoading(true);
     try {
-      await signIn(email, password);
+      if (isSignUp) {
+        await signUp(email, password);
+        Toast.show({ type: 'success', text1: 'Compte créé', text2: 'Connexion en cours...' });
+      } else {
+        await signIn(email, password);
+      }
       onComplete();
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: 'Connexion échouée', text2: e.message });
+      Toast.show({ type: 'error', text1: isSignUp ? 'Inscription échouée' : 'Connexion échouée', text2: e.message });
     } finally {
       setLoading(false);
     }
@@ -32,7 +38,7 @@ export function LoginScreen({ onComplete }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.logo}>RASSID</Text>
-      <Text style={styles.subtitle}>Connexion requise</Text>
+      <Text style={styles.subtitle}>{isSignUp ? 'Créer un compte' : 'Connexion requise'}</Text>
 
       <View style={styles.form}>
         <TextInput
@@ -52,12 +58,22 @@ export function LoginScreen({ onComplete }: Props) {
           onChangeText={setPassword}
           secureTextEntry
         />
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+        <TouchableOpacity style={styles.button} onPress={handleAuth} disabled={loading}>
           {loading ? (
             <ActivityIndicator color={colors.ink} size="small" />
           ) : (
-            <Text style={styles.buttonText}>Se connecter</Text>
+            <Text style={styles.buttonText}>{isSignUp ? "S'inscrire" : 'Se connecter'}</Text>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={{ marginTop: 24, alignItems: 'center' }} 
+          onPress={() => setIsSignUp(!isSignUp)}
+          disabled={loading}
+        >
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter_400Regular' }}>
+            {isSignUp ? 'Déjà un compte ? Se connecter' : "Pas de compte ? S'inscrire"}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

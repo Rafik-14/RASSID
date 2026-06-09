@@ -48,6 +48,10 @@ export async function pushSyncQueue(): Promise<SyncResult> {
     return { success: false, synced: 0, message: 'Client Supabase indisponible' };
   }
 
+  const { data: { session } } = await supabase.auth.getSession();
+  const currentUserId = session?.user?.id ?? '';
+
+  const db = await getDatabase();
   const pendingStores = await db.getAllAsync<Store>(
     `SELECT * FROM stores WHERE sync_status = 'pending' AND is_deleted = 0`
   );
@@ -58,7 +62,7 @@ export async function pushSyncQueue(): Promise<SyncResult> {
       .upsert(
         pendingStores.map((s) => ({
           store_id: s.store_id,
-          rep_id: s.rep_id,
+          rep_id: s.rep_id || currentUserId,
           name: s.name,
           neighborhood: s.neighborhood,
           contact_person: s.contact_person,
@@ -116,7 +120,6 @@ export async function pushSyncQueue(): Promise<SyncResult> {
     return { success: false, synced: 0, message: error.message };
   }
 
-  const db = await getDatabase();
   const ids = pending.map((t) => t.tx_id);
   const placeholders = ids.map(() => '?').join(',');
   await db.runAsync(

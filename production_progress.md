@@ -34,9 +34,9 @@ This document tracks the completed tasks from the production plan (`production_p
 
 ## Phase 2: Security & Authentication (COMPLETED)
 
-- [x] **2.1 Supabase Authentication & Multi-Rep Support**
-  - **Details**: Created `LoginScreen.tsx` with email and password authentication. Linked it to `App.tsx` so users must log in. Added `rep_id` to `Store` and `Transaction` data models and injected the ID into local SQLite inserts based on the authenticated session.
-  - **Impact**: Identifies exactly which sales rep is creating data. Prevents unauthorized usage of the app.
+- [x] **2.1 Supabase Authentication & Secure Session Storage**
+  - **Details**: Created `LoginScreen.tsx` with email and password authentication. Linked it to `App.tsx` so users must log in. Added `rep_id` to `Store` and `Transaction` data models and injected the ID into local SQLite inserts based on the authenticated session. Upgraded the Supabase client to use the `LargeSecureStore` pattern (AES-256 encryption key stored in `expo-secure-store`, with encrypted tokens in `AsyncStorage`).
+  - **Impact**: Identifies exactly which sales rep is creating data. Prevents unauthorized usage of the app. Auth tokens are heavily encrypted and never stored as plaintext on the device, adhering to financial application security best practices.
 
 - [x] **2.2 Row-Level Security (RLS)**
   - **Details**: Updated `supabase/schema.sql` to enable RLS across `stores`, `transactions`, `transaction_items`, and `products` tables. Wrote precise policies using `auth.uid()` to map against the `rep_id`.
@@ -78,6 +78,26 @@ This document tracks the completed tasks from the production plan (`production_p
 
 ---
 
+## Phase 3.5: Testing & Stabilization (COMPLETED)
+
+- [x] **3.5.1 Developer Reset Flow**
+  - **Details**: Added a "DEV: Réinitialiser l'app" button to the bottom of the Dashboard to instantly issue a Supabase `signOut()`, wipe session tokens, drop local SQLite tables, and return to the Login screen.
+  - **Impact**: Enables rapid, full-cycle testing (Login -> Setup -> Sync -> Operations) without needing to manually clear the Expo Go cache or reinstall the app.
+
+- [x] **3.5.2 Fix Android Touch Interceptors (`pointerEvents`)**
+  - **Details**: Added `pointerEvents="none"` and `pointerEvents="box-none"` to `BlurView` and absolute `LinearGradient` components across `StoreProfileScreen`, `NewOperationScreen`, and `NewStoreScreen`.
+  - **Impact**: Resolves a critical React Native Android bug where transparent glassmorphism layers invisibly swallow touch events, preventing users from tapping the buttons underneath.
+
+- [x] **3.5.3 SQLite Deadlock & Transaction Fixes**
+  - **Details**: Refactored `createTransaction()` in `queries.ts` to properly bind inner write operations to the explicit `txn` object inside `withExclusiveTransactionAsync` (preventing deadlocks). Fixed an issue where the transaction was returning `undefined` (resulting in a `tx_id` crash) by properly capturing and returning the object.
+  - **Impact**: Fixes silent failures during transaction saves, ensuring offline-first inserts are atomic and correctly routed back to the UI.
+
+- [x] **3.5.4 Strict Error Handling for Operations**
+  - **Details**: Fixed a missing `getSession` import that caused a `ReferenceError`. Wrapped the `confirm()` function in `NewOperationScreen` with a `try/catch` block connected to the Toast notification system.
+  - **Impact**: Operations that fail (e.g. attempting to pay more than the store's debt) no longer fail silently; the user now receives a clear red error message explaining exactly why the save was rejected.
+
+---
+
 ## ⚠️ Critical Pending Actions & Skipped Steps
 
 These are manual tasks or skipped architectural changes that must be resolved by the developer outside of the standard code-generation pipeline:
@@ -86,13 +106,13 @@ These are manual tasks or skipped architectural changes that must be resolved by
    - **What to do**: Run `npx eas-cli init` in your terminal and log into your Expo account.
    - **Why**: This will generate a unique UUID for your project and update `app.json` so you can compile `.apk` or `.ipa` files in the cloud.
 
-2. **[MANUAL STEP] Supabase Schema Execution (Phase 2 & 3)**
-   - **What to do**: Copy the contents of `supabase/schema.sql` and run it in your Supabase SQL Editor.
-   - **Why**: This applies the strict Row-Level Security (RLS) policies that isolate rep data, registers the `sync_transactions_batch` RPC function, and applies the triggers necessary for Pull Sync to work.
-
-3. **[SKIPPED] SQLite Encryption via SQLCipher (Phase 2)**
+2. **[SKIPPED] SQLite Encryption via SQLCipher (Phase 2)**
    - **Status**: Intentionally skipped for now.
    - **Why**: Adding SQLCipher encryption requires ejecting from the standard Expo Go sandbox into an Expo Development Build, which fundamentally changes how you test and run the app during development. 
+
+3. **[MANUAL STEP] Enable Email Confirmation (Pre-Release)**
+   - **What to do**: Before pushing the final app to production, go to Supabase Dashboard → Authentication → Providers → Email, and turn **ON** "Confirm email".
+   - **Why**: We temporarily disabled it for easier testing, but in a real production environment, users must verify their email addresses to ensure account security and prevent spam.
 
 ---
 

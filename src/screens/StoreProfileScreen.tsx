@@ -192,12 +192,13 @@ export function StoreProfileScreen() {
       </ScrollView>
 
       {/* Action Dock */}
-      <View style={[styles.dockContainer, { paddingBottom: insets.bottom || 24, paddingTop: 32 }]}>
-        <BlurView intensity={12} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <View style={[styles.dockContainer, { paddingBottom: insets.bottom || 24, paddingTop: 32 }]} pointerEvents="box-none">
+        <BlurView intensity={12} tint="dark" style={StyleSheet.absoluteFillObject} pointerEvents="none" />
         <LinearGradient
           colors={['rgba(10,10,10,0)', 'rgba(10,10,10,0.85)', '#0A0A0A']}
           locations={[0, 0.35, 0.7]}
           style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
         />
         <View style={styles.dockInner}>
           <Pressable stretch={false} onPress={() => openOp('livraison')} style={styles.dockBtnPrimary}>
@@ -206,25 +207,26 @@ export function StoreProfileScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
             />
             <Car size={16} color={c.ink} strokeWidth={2.5} />
             <Text style={styles.dockPrimaryText}>Livraison</Text>
           </Pressable>
 
           <Pressable stretch={false} onPress={() => openOp('paiement')} style={styles.dockBtnSecondary}>
-            <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <Banknote size={15} color={c.white} strokeWidth={2} />
             <Text style={styles.dockSecondaryText}>Paiement</Text>
           </Pressable>
 
           <Pressable stretch={false} onPress={() => openOp('retour')} style={styles.dockBtnSecondary}>
-            <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <Undo2 size={15} color={c.white} strokeWidth={2} />
             <Text style={styles.dockSecondaryText}>Retour</Text>
           </Pressable>
 
           <Pressable stretch={false} onPress={() => openOp('avoir')} style={styles.dockBtnSecondary}>
-            <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <Tag size={15} color={c.white} strokeWidth={2} />
             <Text style={styles.dockSecondaryText}>Avoir</Text>
           </Pressable>

@@ -98,8 +98,14 @@ export function NewStoreScreen() {
       </ScrollView>
 
       {/* Action Dock */}
-      <View style={[styles.dockContainer, { paddingBottom: insets.bottom || 24 }]}>
-        <BlurView intensity={20} tint="dark" style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,10,10,0.6)' }]} />
+      <View style={[styles.dockContainer, { paddingBottom: insets.bottom || 24, paddingTop: 32 }]} pointerEvents="box-none">
+        <BlurView intensity={20} tint="dark" style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,10,10,0.6)' }]} pointerEvents="none" />
+        <LinearGradient
+          colors={['rgba(10,10,10,0)', 'rgba(10,10,10,0.85)', '#0A0A0A']}
+          locations={[0, 0.35, 0.7]}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
         <View style={styles.dockInner}>
           <Pressable stretch={false} onPress={save} style={styles.dockBtnPrimary}>
             <LinearGradient
@@ -107,6 +113,7 @@ export function NewStoreScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
             />
             <Check size={16} color={c.ink} strokeWidth={3} />
             <Text style={styles.dockPrimaryText}>Enregistrer</Text>

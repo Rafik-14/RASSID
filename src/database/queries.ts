@@ -11,6 +11,7 @@ import type {
 import { isoNow } from '@/utils/dates';
 import { computeTxHash } from '@/utils/hash';
 import * as Crypto from 'expo-crypto';
+import { getSession } from '@/api/supabase';
 
 export async function getAllStores(search = ''): Promise<Store[]> {
   const db = await getDatabase();
@@ -148,8 +149,9 @@ export interface CreateTransactionInput {
 
 export async function createTransaction(input: CreateTransactionInput): Promise<Transaction> {
   const db = await getDatabase();
+  let resultTx: Transaction | null = null;
   
-  return await db.withExclusiveTransactionAsync(async () => {
+  await db.withExclusiveTransactionAsync(async (txn: any) => {
     const session = await getSession();
     const repId = session?.user?.id ?? '';
     const txId = Crypto.randomUUID();
@@ -167,7 +169,8 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
       parentHash
     );
 
-    await db.runAsync(
+    // Use txn instead of db for the write operations to avoid deadlock
+    await txn.runAsync(
       `INSERT INTO transactions (tx_id, store_id, rep_id, tx_type, amount, reference_no, note,
         hash_signature, parent_hash, sync_status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
@@ -187,7 +190,7 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
 
     if (input.items?.length) {
       for (const item of input.items) {
-        await db.runAsync(
+        await txn.runAsync(
           `INSERT INTO transaction_items (item_id, tx_id, product_id, quantity, price_at_time)
            VALUES (?, ?, ?, ?, ?)`,
           [Crypto.randomUUID(), txId, item.productId, item.quantity, item.priceAtTime]
@@ -213,11 +216,9 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
       } else if (input.txType === 2) {
         lastPayment = createdAt;
         totalCollected += Math.abs(signedAmount);
-      } else if (input.txType === 3 || input.txType === 4) {
-        // retour / avoir reduce debt
       }
 
-      await db.runAsync(
+      await txn.runAsync(
         `UPDATE stores SET current_balance = ?, last_delivery_date = ?, last_payment_date = ?,
           total_delivered = ?, total_collected = ?, sync_status = 'pending'
          WHERE store_id = ?`,
@@ -225,11 +226,13 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
       );
     }
 
-    const tx = await db.getFirstAsync<Transaction>('SELECT * FROM transactions WHERE tx_id = ?', [
+    const tx = await txn.getFirstAsync('SELECT * FROM transactions WHERE tx_id = ?', [
       txId,
     ]);
-    return tx!;
+    resultTx = tx as Transaction;
   });
+
+  return resultTx!;
 }
 
 export async function getTransactionItems(txId: string): Promise<TransactionItem[]> {
