@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { View, ScrollView, Text, StyleSheet, LayoutAnimation, Platform, UIManager, Alert } from 'react-native';
+import { View, FlatList, Text, StyleSheet, LayoutAnimation, Platform, UIManager, Alert } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
-import { ArrowDown, ArrowUp, Filter } from 'lucide-react-native';
+import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBg, Pressable, Eyebrow, AnimatedNumber } from '@/components/Chrome';
 import { TopBar } from '@/components/TopBar';
@@ -148,71 +148,75 @@ export function StoreHistoryScreen() {
         // We could modify TopBar to accept custom right elements, but for now we'll skip the right Filter icon if TopBar doesn't support it, or wait, TopBar takes `onRightPress` and `rightIcon: 'bell' | 'none'`. I'll just use 'none' since filtering is right below.
       />
       
-      <ScrollView
+      <FlatList
+        data={Array.from(grouped.entries())}
+        keyExtractor={([day]) => day}
         contentContainerStyle={{ paddingTop: insets.top + 70, paddingBottom: insets.bottom + 24 }}
-      >
-        <Animated.View entering={FadeInUp.duration(400)} style={styles.heroArea}>
-          <Eyebrow style={{ marginBottom: 12 }} dot={c.lime}>Solde net du mois</Eyebrow>
-          <View style={styles.netAmountRow}>
-            <Text style={styles.netAmountSign}>{net >= 0 ? '+' : ''}</Text>
-            <AnimatedNumber value={Math.abs(net)} style={styles.netAmountValue} />
-            <Text style={styles.netAmountCurrency}>DA</Text>
-          </View>
-          
-          <View style={styles.statsRow}>
-            <View style={styles.statBox}>
-              <View style={[styles.statIconWrapper, { backgroundColor: c.redDim, borderColor: 'rgba(255,77,77,0.2)' }]}>
-                <ArrowUp size={11} color={c.red} strokeWidth={3} />
+        ListHeaderComponent={
+          <>
+            <Animated.View entering={FadeInUp.duration(400)} style={styles.heroArea}>
+              <Eyebrow style={{ marginBottom: 12 }} dot={c.lime}>Solde net du mois</Eyebrow>
+              <View style={styles.netAmountRow}>
+                <Text style={styles.netAmountSign}>{net >= 0 ? '+' : ''}</Text>
+                <AnimatedNumber value={Math.abs(net)} style={styles.netAmountValue} />
+                <Text style={styles.netAmountCurrency}>DA</Text>
               </View>
-              <View>
-                <Text style={styles.statLabel}>Sortant</Text>
-                <Text style={styles.statValue}>{formatDAFull(sortant)}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.statBox}>
-              <View style={[styles.statIconWrapper, { backgroundColor: c.greenDim, borderColor: 'rgba(52,211,153,0.2)' }]}>
-                <ArrowDown size={11} color={c.green} strokeWidth={3} />
-              </View>
-              <View>
-                <Text style={styles.statLabel}>Entrant</Text>
-                <Text style={styles.statValue}>{formatDAFull(entrant)}</Text>
-              </View>
-            </View>
-          </View>
-        </Animated.View>
-
-        <View style={styles.filterPillsContainer}>
-          {FILTERS.map((p) => {
-            const active = p.id === filter;
-            return (
-              <Pressable
-                key={p.id}
-                stretch={false}
-                onPress={() => handleFilterChange(p.id)}
-                style={styles.filterPillWrapper}
-              >
-                {active && (
-                  <View style={[StyleSheet.absoluteFillObject, styles.filterPillActiveBg]} />
-                )}
-                <View style={styles.filterPillContent}>
-                  <Text style={[styles.filterPillLabel, { color: active ? c.ink : c.white }]}>
-                    {p.l}
-                  </Text>
+              
+              <View style={styles.statsRow}>
+                <View style={styles.statBox}>
+                  <View style={[styles.statIconWrapper, { backgroundColor: c.redDim, borderColor: 'rgba(255,77,77,0.2)' }]}>
+                    <ArrowUp size={11} color={c.red} strokeWidth={3} />
+                  </View>
+                  <View>
+                    <Text style={styles.statLabel}>Sortant</Text>
+                    <Text style={styles.statValue}>{formatDAFull(sortant)}</Text>
+                  </View>
                 </View>
-              </Pressable>
-            );
-          })}
-        </View>
+                
+                <View style={styles.statBox}>
+                  <View style={[styles.statIconWrapper, { backgroundColor: c.greenDim, borderColor: 'rgba(52,211,153,0.2)' }]}>
+                    <ArrowDown size={11} color={c.green} strokeWidth={3} />
+                  </View>
+                  <View>
+                    <Text style={styles.statLabel}>Entrant</Text>
+                    <Text style={styles.statValue}>{formatDAFull(entrant)}</Text>
+                  </View>
+                </View>
+              </View>
+            </Animated.View>
 
-        {txs.length === 0 && (
-          <Text style={styles.emptyText}>Aucune opération</Text>
-        )}
+            <View style={styles.filterPillsContainer}>
+              {FILTERS.map((p) => {
+                const active = p.id === filter;
+                return (
+                  <Pressable
+                    key={p.id}
+                    stretch={false}
+                    onPress={() => handleFilterChange(p.id)}
+                    style={styles.filterPillWrapper}
+                  >
+                    {active && (
+                      <View style={[StyleSheet.absoluteFillObject, styles.filterPillActiveBg]} />
+                    )}
+                    <View style={styles.filterPillContent}>
+                      <Text style={[styles.filterPillLabel, { color: active ? c.ink : c.white }]}>
+                        {p.l}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-        {Array.from(grouped.entries()).map(([day, dayTxs], gi) => {
+            {txs.length === 0 && (
+              <Text style={styles.emptyText}>Aucune opération</Text>
+            )}
+          </>
+        }
+        renderItem={({ item: [day, dayTxs], index: gi }) => {
           const dayNet = dayTxs.reduce((s, t) => s + t.amount, 0);
           return (
-            <View key={day} style={styles.groupContainer}>
+            <View style={styles.groupContainer}>
               <View style={styles.groupHeader}>
                 <View>
                   <Text style={styles.groupDate}>{formatDateShort(day + 'T12:00:00.000Z')}</Text>
@@ -230,7 +234,7 @@ export function StoreHistoryScreen() {
                   return (
                     <Animated.View 
                       key={tx.tx_id} 
-                      entering={FadeInUp.delay(i * 40).duration(300)}
+                      entering={FadeInUp.delay(Math.min(gi * 3 + i, 15) * 40).duration(300)}
                     >
                       <Pressable 
                         stretch={false}
@@ -257,8 +261,8 @@ export function StoreHistoryScreen() {
               </View>
             </View>
           );
-        })}
-      </ScrollView>
+        }}
+      />
     </StatusBg>
   );
 }

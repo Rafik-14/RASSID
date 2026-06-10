@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  ScrollView,
+  FlatList,
   StyleSheet,
   RefreshControl,
   LayoutAnimation,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Search, SlidersHorizontal, Plus } from 'lucide-react-native';
+import { Search, Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBg, Pressable, Eyebrow } from '@/components/Chrome';
 import { TopBar } from '@/components/TopBar';
@@ -117,69 +117,75 @@ export function StoresScreen() {
         </Animated.View>
       </View>
 
-      <ScrollView
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.store_id}
         contentContainerStyle={{ paddingTop: insets.top + 170, paddingBottom: insets.bottom + 160 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.lime} />}
-      >
-        <View style={styles.searchRow}>
-          <LinearGradient colors={['#1d1d1d', '#161616']} style={styles.searchInputContainer}>
-            <Search size={16} color={c.white40} strokeWidth={2} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Rechercher un magasin…"
-              placeholderTextColor={c.white40}
-              value={search}
-              onChangeText={setSearch}
-            />
-          </LinearGradient>
-        </View>
+        ListHeaderComponent={
+          <>
+            <View style={styles.searchRow}>
+              <LinearGradient colors={['#1d1d1d', '#161616']} style={styles.searchInputContainer}>
+                <Search size={16} color={c.white40} strokeWidth={2} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Rechercher un magasin…"
+                  placeholderTextColor={c.white40}
+                  value={search}
+                  onChangeText={setSearch}
+                />
+              </LinearGradient>
+            </View>
 
-        <View style={styles.filterPillsContainer}>
-          {filters.map((p) => {
-            const active = p.id === filter;
-            return (
-              <Pressable
-                key={p.id}
-                stretch={false}
-                onPress={() => handleFilterChange(p.id)}
-                style={styles.filterPillWrapper}
-              >
-                {active && (
-                  <View style={[StyleSheet.absoluteFillObject, styles.filterPillActiveBg]} />
-                )}
-                <View style={styles.filterPillContent}>
-                  <Text style={[styles.filterPillLabel, { color: active ? c.ink : c.white }]}>
-                    {p.l}
-                  </Text>
-                  <Text style={[styles.filterPillCount, { color: active ? 'rgba(0,0,0,0.45)' : c.white40 }]}>
-                    {counts[p.id]}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+            <View style={styles.filterPillsContainer}>
+              {filters.map((p) => {
+                const active = p.id === filter;
+                return (
+                  <Pressable
+                    key={p.id}
+                    stretch={false}
+                    onPress={() => handleFilterChange(p.id)}
+                    style={styles.filterPillWrapper}
+                  >
+                    {active && (
+                      <View style={[StyleSheet.absoluteFillObject, styles.filterPillActiveBg]} />
+                    )}
+                    <View style={styles.filterPillContent}>
+                      <Text style={[styles.filterPillLabel, { color: active ? c.ink : c.white }]}>
+                        {p.l}
+                      </Text>
+                      <Text style={[styles.filterPillCount, { color: active ? 'rgba(0,0,0,0.45)' : c.white40 }]}>
+                        {counts[p.id]}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-        <View style={styles.listHeader}>
-          <Text style={styles.listHeaderText}>
-            {filtered.length} magasin{filtered.length > 1 ? 's' : ''}
-          </Text>
-        </View>
-
-        <View style={styles.listContainer}>
-          {filtered.length === 0 && (
+            <View style={styles.listHeader}>
+              <Text style={styles.listHeaderText}>
+                {filtered.length} magasin{filtered.length > 1 ? 's' : ''}
+              </Text>
+            </View>
+          </>
+        }
+        ListEmptyComponent={
+          <View style={styles.listContainer}>
             <Text style={styles.emptyText}>Aucun magasin trouvé</Text>
-          )}
-          {filtered.map((store, i) => (
-            <Animated.View key={store.store_id} entering={FadeInUp.delay(i * 40).duration(300)}>
+          </View>
+        }
+        renderItem={({ item: store, index: i }) => (
+          <View style={styles.listContainer}>
+            <Animated.View entering={FadeInUp.delay(Math.min(i, 15) * 40).duration(300)}>
               <StoreRow
                 store={store}
                 onPress={() => navigation.navigate('StoreProfile', { storeId: store.store_id })}
               />
             </Animated.View>
-          ))}
-        </View>
-      </ScrollView>
+          </View>
+        )}
+      />
 
       {/* FAB */}
       <View style={[styles.fabContainer, { bottom: insets.bottom + 85 }]}>

@@ -118,6 +118,26 @@ This document tracks the completed tasks from the production plan (`production_p
   - **Details**: Modified `syncService.ts` to push `is_deleted` status to Supabase instead of completely excluding deleted stores from the upload queue.
   - **Impact**: Fixes a critical sync crash. When a store is deleted locally, Supabase now properly registers the deletion. This ensures any associated transactions uploaded afterward do not trigger a "foreign key constraint" violation on the server.
 
+- [x] **4.6 Transaction Voiding**
+  - **Details**: Added `voidTransaction` in `queries.ts` to securely negate a transaction by creating a new inverse transaction (satisfying hash-chain rules). Added interactive `Alert` menus across history screens (Store History, Deliveries, Payments) allowing users to tap and void operations. Applied a `textDecorationLine: 'line-through'` UI treatment to canceled items.
+  - **Impact**: Enables critical error correction for sales reps who accidentally record the wrong amount, without compromising cryptographic ledger integrity.
+
+- [x] **4.7 Global Deliveries & Payments Screens**
+  - **Details**: Refactored `DeliveriesScreen.tsx` and `PaymentsScreen.tsx` from static stub placeholders into fully functional screens. Replaced `ScrollView` with `FlatList`, and added `getGlobalTransactions` to fetch global operations sorted by time across all stores. 
+  - **Impact**: Reps can now review their daily activities chronologically in one place instead of having to visit each store's profile individually.
+
+---
+
+## Phase 5: Polish & Deployment (IN PROGRESS)
+
+- [x] **5.1 Performance Optimization**
+  - **Details**: Replaced `ScrollView` with `FlatList`/`SectionList` in `StoresScreen.tsx`, `OverdueAlertsScreen.tsx`, and `StoreHistoryScreen.tsx`. Refactored `ChartCard.tsx` to use Reanimated's `withDelay` instead of `setTimeout`. Limited staggered animation delays to a maximum of 15 items.
+  - **Impact**: Massively improves rendering performance for long lists and ensures buttery smooth 60fps animations.
+
+- [x] **5.2 Remove Dead Imports**
+  - **Details**: Cleaned up unused lucide icons and `react-native-svg` imports across the modified screens and `Chrome.tsx`.
+  - **Impact**: Reduces JS bundle size and maintains a clean codebase.
+
 ---
 
 ## ⚠️ Critical Pending Actions & Skipped Steps
@@ -139,6 +159,10 @@ These are manual tasks or skipped architectural changes that must be resolved by
 4. **[MANUAL STEP] Seed Production Supabase with Initial Data (Pre-Release)**
    - **What to do**: Ensure your real product catalog and initial store list are added to Supabase (e.g., via CSV import, Dashboard, or running `seed_products.sql`/`seed_stores.sql`) *before* your sales reps start creating transactions in the field.
    - **Why**: The mobile app is designed to pull products from the server. During development, fake local seed data bypassed this flow. If a rep creates a transaction for a product or store that does not exist in the Supabase database, the server will reject the sync with a "foreign key constraint" violation.
+
+5. **[MANUAL STEP] Move Dev Files & Figma Assets (Phase 5.5)**
+   - **What to do**: Move the `.zip` files, `.md` specification files, and the `figma_make_code` directory to a separate folder outside of the project root (or into a `docs/` folder) before final deployment.
+   - **Why**: Keeps the final production app bundle as small as possible while preserving the original design and spec files that you still need.
 
 ---
 

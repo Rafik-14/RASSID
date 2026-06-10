@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, ScrollView, Text, StyleSheet, Linking } from 'react-native';
+import { View, SectionList, Text, StyleSheet, Linking } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AlertTriangle, Phone, ChevronRight } from 'lucide-react-native';
@@ -70,107 +70,116 @@ export function OverdueAlertsScreen() {
     <StatusBg>
       <TopBar title="Impayés" onBack={() => navigation.goBack()} rightIcon="none" />
       
-      <ScrollView
+      <SectionList
+        sections={[
+          { title: 'Magasins en alerte', data: alerts, isAlert: true },
+          { title: 'Tous les magasins par dette', data: byDebt, isAlert: false }
+        ]}
+        keyExtractor={(item, index) => item.store_id + index}
         contentContainerStyle={{ paddingTop: insets.top + 70, paddingBottom: insets.bottom + 24 }}
-      >
-        <Animated.View entering={FadeInUp.duration(400)} style={styles.bannerContainer}>
-          <View style={styles.bannerInner}>
-            <LinearGradient
-              colors={['rgba(255,77,77,0.10)', 'rgba(255,77,77,0.04)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            <View style={styles.bannerIconBox}>
-              <AlertTriangle size={16} color={c.red} strokeWidth={2.4} />
-            </View>
-            <View style={styles.bannerContent}>
-              <Text style={styles.bannerTitle}>
-                {alerts.length} magasin{alerts.length > 1 ? 's' : ''} — plus de 10 jours sans paiement
-              </Text>
-              <View style={styles.bannerAmountRow}>
-                <AnimatedNumber value={totalAlertDebt} duration={900} style={styles.bannerAmount} />
-                <Text style={styles.bannerCurrency}>DA</Text>
+        ListHeaderComponent={
+          <Animated.View entering={FadeInUp.duration(400)} style={styles.bannerContainer}>
+            <View style={styles.bannerInner}>
+              <LinearGradient
+                colors={['rgba(255,77,77,0.10)', 'rgba(255,77,77,0.04)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <View style={styles.bannerIconBox}>
+                <AlertTriangle size={16} color={c.red} strokeWidth={2.4} />
+              </View>
+              <View style={styles.bannerContent}>
+                <Text style={styles.bannerTitle}>
+                  {alerts.length} magasin{alerts.length > 1 ? 's' : ''} — plus de 10 jours sans paiement
+                </Text>
+                <View style={styles.bannerAmountRow}>
+                  <AnimatedNumber value={totalAlertDebt} duration={900} style={styles.bannerAmount} />
+                  <Text style={styles.bannerCurrency}>DA</Text>
+                </View>
               </View>
             </View>
+          </Animated.View>
+        }
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Eyebrow dot={section.isAlert ? c.red : undefined}>{section.title}</Eyebrow>
           </View>
-        </Animated.View>
-
-        <View style={styles.sectionHeader}>
-          <Eyebrow dot={c.red}>Magasins en alerte</Eyebrow>
-        </View>
-
-        <View style={styles.alertsList}>
-          {alerts.map((a, i) => {
+        )}
+        renderSectionFooter={({ section }) => (
+          section.isAlert ? <View style={{ height: 28 }} /> : null
+        )}
+        renderItem={({ item, index, section }) => {
+          if (section.isAlert) {
+            const a = item as (Store & { daysSincePayment: number });
             const severity = Math.min(1, a.daysSincePayment / 20);
             const color = severity > 0.8 ? c.red : c.amber;
             
             return (
-              <Animated.View key={a.store_id} entering={FadeInUp.delay(0.05 * i * 1000 + 150).duration(350)}>
-                <Pressable
-                  stretch={false}
-                  onPress={() => navigation.navigate('StoreProfile', { storeId: a.store_id })}
-                  style={[styles.alertRow, i === alerts.length - 1 && { borderBottomWidth: 0 }]}
-                >
-                  <View style={styles.alertAvatarBox}>
-                    <LinearGradient colors={['#2a2a2a', '#161616']} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
-                    <Text style={styles.alertInitials}>{getInitials(a.name)}</Text>
-                    <View style={[styles.alertDot, { backgroundColor: color, shadowColor: color }]} />
-                  </View>
-                  
-                  <View style={styles.alertMid}>
-                    <Text style={styles.alertName}>{a.name}</Text>
-                    <Text style={[styles.alertDays, { color }]}>
-                      Dernier paiement : il y a {a.daysSincePayment} jours
-                    </Text>
-                  </View>
-                  
+              <View style={{ paddingHorizontal: 22 }}>
+                <Animated.View entering={FadeInUp.delay(Math.min(index, 15) * 100 + 150).duration(350)}>
                   <Pressable
                     stretch={false}
-                    onPress={() => a.phone && Linking.openURL(`tel:${a.phone}`)}
-                    style={styles.phoneBtn}
+                    onPress={() => navigation.navigate('StoreProfile', { storeId: a.store_id })}
+                    style={[styles.alertRow, index === section.data.length - 1 && { borderBottomWidth: 0 }]}
                   >
-                    <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} />
-                    <Phone size={13} color={c.white} strokeWidth={2.2} />
+                    <View style={styles.alertAvatarBox}>
+                      <LinearGradient colors={['#2a2a2a', '#161616']} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
+                      <Text style={styles.alertInitials}>{getInitials(a.name)}</Text>
+                      <View style={[styles.alertDot, { backgroundColor: color, shadowColor: color }]} />
+                    </View>
+                    
+                    <View style={styles.alertMid}>
+                      <Text style={styles.alertName}>{a.name}</Text>
+                      <Text style={[styles.alertDays, { color }]}>
+                        Dernier paiement : il y a {a.daysSincePayment} jours
+                      </Text>
+                    </View>
+                    
+                    <Pressable
+                      stretch={false}
+                      onPress={() => a.phone && Linking.openURL(`tel:${a.phone}`)}
+                      style={styles.phoneBtn}
+                    >
+                      <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} />
+                      <Phone size={13} color={c.white} strokeWidth={2.2} />
+                    </Pressable>
                   </Pressable>
-                </Pressable>
-              </Animated.View>
+                </Animated.View>
+              </View>
             );
-          })}
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Eyebrow>Tous les magasins par dette</Eyebrow>
-        </View>
-
-        <View style={styles.byDebtList}>
-          {byDebt.map((s, i) => (
-            <Animated.View key={s.store_id} entering={FadeInUp.delay(0.04 * i * 1000 + 300).duration(300)}>
-              <Pressable
-                stretch={false}
-                onPress={() => navigation.navigate('StoreProfile', { storeId: s.store_id })}
-                style={[styles.debtRow, i === byDebt.length - 1 && { borderBottomWidth: 0 }]}
-              >
-                <View style={styles.debtAvatarBox}>
-                  <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} />
-                  <Text style={styles.debtInitials}>{getInitials(s.name)}</Text>
-                </View>
-                
-                <View style={styles.debtMid}>
-                  <Text style={styles.debtName}>{s.name}</Text>
-                  <Text style={styles.debtArea}>{s.neighborhood || '—'}</Text>
-                </View>
-                
-                <View style={styles.debtRight}>
-                  <Text style={styles.debtAmount}>{formatDAFull(s.current_balance)}</Text>
-                  <Text style={styles.debtCurrency}>DA</Text>
-                  <ChevronRight size={13} color={c.white40} strokeWidth={2} />
-                </View>
-              </Pressable>
-            </Animated.View>
-          ))}
-        </View>
-      </ScrollView>
+          } else {
+            const s = item as Store;
+            return (
+              <View style={{ paddingHorizontal: 22 }}>
+                <Animated.View entering={FadeInUp.delay(Math.min(index, 15) * 100 + 300).duration(300)}>
+                  <Pressable
+                    stretch={false}
+                    onPress={() => navigation.navigate('StoreProfile', { storeId: s.store_id })}
+                    style={[styles.debtRow, index === section.data.length - 1 && { borderBottomWidth: 0 }]}
+                  >
+                    <View style={styles.debtAvatarBox}>
+                      <LinearGradient colors={['#1f1f1f', '#161616']} style={StyleSheet.absoluteFillObject} />
+                      <Text style={styles.debtInitials}>{getInitials(s.name)}</Text>
+                    </View>
+                    
+                    <View style={styles.debtMid}>
+                      <Text style={styles.debtName}>{s.name}</Text>
+                      <Text style={styles.debtArea}>{s.neighborhood || '—'}</Text>
+                    </View>
+                    
+                    <View style={styles.debtRight}>
+                      <Text style={styles.debtAmount}>{formatDAFull(s.current_balance)}</Text>
+                      <Text style={styles.debtCurrency}>DA</Text>
+                      <ChevronRight size={13} color={c.white40} strokeWidth={2} />
+                    </View>
+                  </Pressable>
+                </Animated.View>
+              </View>
+            );
+          }
+        }}
+      />
     </StatusBg>
   );
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { c } from './tokens';
 import { AnimatedNumber, ElevatedCard } from './Chrome';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing, withDelay } from 'react-native-reanimated';
 
 interface ChartCardProps {
   title: string;
@@ -21,12 +21,13 @@ function MiniBar({ value, max, color, index, isLast }: { value: number; max: num
 
   React.useEffect(() => {
     // stagger animation
-    setTimeout(() => {
-      heightVal.value = withTiming((value / max) * 100, {
+    heightVal.value = withDelay(
+      index * 50 + 200,
+      withTiming((value / max) * 100, {
         duration: 600,
         easing: Easing.bezier(0.32, 0.72, 0, 1),
-      });
-    }, index * 50 + 200);
+      })
+    );
   }, [value, max]);
 
   const animatedStyle = useAnimatedStyle(() => {

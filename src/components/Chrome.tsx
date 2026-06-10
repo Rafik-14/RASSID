@@ -4,7 +4,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, Eas
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import MaskedView from '@react-native-masked-view/masked-view';
-import Svg, { Defs, RadialGradient, Stop, Circle, Filter, FeTurbulence, Rect } from 'react-native-svg';
+import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { c } from './tokens';
 
 export function StatusBg({ children }: { children: ReactNode }) {
