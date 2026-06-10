@@ -20,12 +20,7 @@ import Toast from 'react-native-toast-message';
 import { getRepProfile, saveRepProfile } from '@/services/repService';
 import { applyRepProfile } from '@/config/env';
 
-function computeInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return '?';
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
-}
+import { computeInitials } from '@/utils/text';
 
 export function ProfileEditScreen() {
   const navigation = useNavigation();

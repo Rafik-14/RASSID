@@ -148,8 +148,8 @@ export function DashboardScreen() {
           collectedToday={kpis.cashCollectedToday}
           overdueCount={overdueCount}
           onPressDebt={() => navigation.navigate('OverdueAlerts')}
-          onPressStores={() => navigation.navigate('Stores' as any)} // Switch tab
-          onPressCollected={() => navigation.navigate('Payments' as any)}
+          onPressStores={() => navigation.navigate('MainTabs', { screen: 'Stores' })} // Switch tab
+          onPressCollected={() => navigation.navigate('MainTabs', { screen: 'Payments' })}
         />
 
         <View style={styles.sectionHeader}>
@@ -158,7 +158,7 @@ export function DashboardScreen() {
 
         <View style={styles.chartsRow}>
           <View style={{ flex: 1 }}>
-            <Pressable onPress={() => navigation.navigate('Deliveries' as any)}>
+            <Pressable onPress={() => navigation.navigate('MainTabs', { screen: 'Deliveries' })}>
               <ChartCard
                 title="LIVRAISONS"
                 trend={0}
@@ -170,7 +170,7 @@ export function DashboardScreen() {
             </Pressable>
           </View>
           <View style={{ flex: 1 }}>
-            <Pressable onPress={() => navigation.navigate('Payments' as any)}>
+            <Pressable onPress={() => navigation.navigate('MainTabs', { screen: 'Payments' })}>
               <ChartCard
                 title="PAIEMENTS REÇUS"
                 trend={0}

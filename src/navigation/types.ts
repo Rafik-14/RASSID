@@ -1,7 +1,7 @@
 import type { OperationType } from '@/types';
 
 export type RootStackParamList = {
-  MainTabs: undefined;
+  MainTabs: { screen?: keyof MainTabParamList } | undefined;
   StoreProfile: { storeId: string };
   StoreHistory: { storeId: string };
   NewOperation: { storeId?: string; type?: OperationType };

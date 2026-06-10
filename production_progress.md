@@ -142,6 +142,14 @@ This document tracks the completed tasks from the production plan (`production_p
   - **Details**: Installed `@sentry/react-native`, created `src/services/crashReporting.ts`, initialized it in `App.tsx`, wired it into `ErrorBoundary.tsx`, and configured the Expo plugin in `app.json`.
   - **Impact**: Automatically captures and reports unhandled exceptions and crashes in production directly to the Sentry dashboard.
 
+- [x] **5.4 Add OTA Updates**
+  - **Details**: Installed `expo-updates` and configured the `updates` and `runtimeVersion` keys inside `app.json`.
+  - **Impact**: Enables pushing instant Javascript and UI bug fixes to users over-the-air without requiring App Store reviews.
+
+- [x] **5.6 Fix `as any` Type Casts**
+  - **Details**: Updated `RootStackParamList` in `src/navigation/types.ts` to natively support nested `MainTabParamList` routing. Removed the `as any` hacks in `DashboardScreen.tsx` and replaced them with type-safe `navigation.navigate('MainTabs', { screen: '...' })` calls.
+  - **Impact**: Resolves strict TypeScript warnings and restores proper autocomplete and type-safety to the dashboard navigation.
+
 ---
 
 ## ⚠️ Critical Pending Actions & Skipped Steps

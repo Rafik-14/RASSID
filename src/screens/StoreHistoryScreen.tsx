@@ -17,10 +17,6 @@ import { useApp } from '@/store/AppContext';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
 type Route = RouteProp<RootStackParamList, 'StoreHistory'>;
 
 const FILTERS: { id: HistoryFilter; l: string }[] = [

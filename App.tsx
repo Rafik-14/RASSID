@@ -2,7 +2,7 @@ import 'react-native-get-random-values';
 import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from 'react';
 import Toast from 'react-native-toast-message';
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Platform, UIManager } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -34,6 +34,10 @@ import { registerBackgroundSync } from '@/services/backgroundSync';
 import { initCrashReporting } from '@/services/crashReporting';
 
 initCrashReporting();
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 SplashScreen.preventAutoHideAsync();
 
