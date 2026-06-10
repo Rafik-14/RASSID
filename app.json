@@ -50,7 +50,14 @@
           "faceIDPermission": "Autoriser RASSID à utiliser Face ID pour sécuriser l'application."
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "YOUR_ORG",
+          "project": "rassid"
+        }
+      ]
     ],
     "extra": {
       "eas": {

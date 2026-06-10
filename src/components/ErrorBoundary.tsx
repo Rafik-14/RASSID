@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { c } from './tokens';
+import { reportError } from '@/services/crashReporting';
 
 interface Props {
   children: ReactNode;
@@ -22,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // TODO: Send to crash reporting (Sentry) in Phase 5
+    reportError(error, { errorInfo });
     console.error('ErrorBoundary caught:', error, errorInfo);
   }
 

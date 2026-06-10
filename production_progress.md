@@ -138,6 +138,10 @@ This document tracks the completed tasks from the production plan (`production_p
   - **Details**: Cleaned up unused lucide icons and `react-native-svg` imports across the modified screens and `Chrome.tsx`.
   - **Impact**: Reduces JS bundle size and maintains a clean codebase.
 
+- [x] **5.3 Add Crash Reporting**
+  - **Details**: Installed `@sentry/react-native`, created `src/services/crashReporting.ts`, initialized it in `App.tsx`, wired it into `ErrorBoundary.tsx`, and configured the Expo plugin in `app.json`.
+  - **Impact**: Automatically captures and reports unhandled exceptions and crashes in production directly to the Sentry dashboard.
+
 ---
 
 ## ⚠️ Critical Pending Actions & Skipped Steps

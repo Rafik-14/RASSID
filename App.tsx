@@ -31,6 +31,9 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { getSession } from '@/api/supabase';
 import { LoginScreen } from '@/screens/LoginScreen';
 import { registerBackgroundSync } from '@/services/backgroundSync';
+import { initCrashReporting } from '@/services/crashReporting';
+
+initCrashReporting();
 
 SplashScreen.preventAutoHideAsync();
 
