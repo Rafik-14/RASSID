@@ -1,9 +1,10 @@
 import * as Sentry from '@sentry/react-native';
+import { env } from '@/config/env';
 
 export function initCrashReporting() {
-  if (!__DEV__) {
+  if (!__DEV__ && env.sentryDsn) {
     Sentry.init({
-      dsn: 'https://47cee9d374c92af6e687aa5bf298105b@o4511541137440768.ingest.de.sentry.io/4511541150548048',
+      dsn: env.sentryDsn,
       tracesSampleRate: 0.2,
     });
   }

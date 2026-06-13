@@ -17,11 +17,18 @@ interface AppContextValue {
   syncing: boolean;
   refresh: () => Promise<void>;
   syncNow: () => Promise<string>;
+  logout: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-export function AppProvider({ children }: { children: ReactNode }) {
+export function AppProvider({
+  children,
+  onLogout,
+}: {
+  children: ReactNode;
+  onLogout: () => void;
+}) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [pendingSync, setPendingSync] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -38,6 +45,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const result = await pushSyncQueue();
       await refresh();
+      if (!result.success) {
+        throw new Error(result.message);
+      }
       return result.message;
     } finally {
       setSyncing(false);
@@ -49,8 +59,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo(
-    () => ({ refreshKey, pendingSync, syncing, refresh, syncNow }),
-    [refreshKey, pendingSync, syncing, refresh, syncNow]
+    () => ({ refreshKey, pendingSync, syncing, refresh, syncNow, logout: onLogout }),
+    [refreshKey, pendingSync, syncing, refresh, syncNow, onLogout]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

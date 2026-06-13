@@ -9,6 +9,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -40,6 +41,7 @@ export function StoresScreen() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
@@ -52,6 +54,8 @@ export function StoresScreen() {
         text1: 'Erreur de chargement',
         text2: e.message || 'Impossible de charger les données.',
       });
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -171,9 +175,15 @@ export function StoresScreen() {
           </>
         }
         ListEmptyComponent={
-          <View style={styles.listContainer}>
-            <Text style={styles.emptyText}>Aucun magasin trouvé</Text>
-          </View>
+          loading ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator color={c.lime} />
+            </View>
+          ) : (
+            <View style={styles.listContainer}>
+              <Text style={styles.emptyText}>Aucun magasin trouvé</Text>
+            </View>
+          )
         }
         renderItem={({ item: store, index: i }) => (
           <View style={styles.listContainer}>

@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBg, Pressable, Eyebrow, AnimatedNumber } from '@/components/Chrome';
 import { TopBar } from '@/components/TopBar';
 import { c } from '@/components/tokens';
-import { getAllStores } from '@/database/queries';
+import { getAllStores, getOverdueStores } from '@/database/queries';
 import type { Store } from '@/types';
 import type { RootStackParamList } from '@/navigation/types';
 import { useApp } from '@/store/AppContext';
@@ -31,23 +31,21 @@ export function OverdueAlertsScreen() {
 
   const load = useCallback(async () => {
     try {
-      const all = await getAllStores();
-      
-      // Compute byDebt
+      const [all, overdue] = await Promise.all([getAllStores(), getOverdueStores()]);
+
       const withDebt = all.filter(s => s.current_balance > 0).sort((a, b) => b.current_balance - a.current_balance);
       setByDebt(withDebt);
-      
-      // Compute alerts (10+ days overdue)
+
       const nowMs = new Date(isoNow()).getTime();
-      const computedAlerts = withDebt.map(s => {
-        let days = 999;
-        if (s.last_payment_date) {
-          const lastMs = new Date(s.last_payment_date).getTime();
-          days = Math.floor((nowMs - lastMs) / (1000 * 3600 * 24));
-        }
-        return { ...s, daysSincePayment: days };
-      }).filter(s => s.daysSincePayment >= 10).sort((a, b) => b.daysSincePayment - a.daysSincePayment);
-      
+      const computedAlerts = overdue
+        .map(s => {
+          const days = s.last_payment_date
+            ? Math.floor((nowMs - new Date(s.last_payment_date).getTime()) / (1000 * 3600 * 24))
+            : 0;
+          return { ...s, daysSincePayment: days };
+        })
+        .sort((a, b) => b.daysSincePayment - a.daysSincePayment);
+
       setAlerts(computedAlerts);
       setTotalAlertDebt(computedAlerts.reduce((sum, s) => sum + s.current_balance, 0));
     } catch (e: any) {

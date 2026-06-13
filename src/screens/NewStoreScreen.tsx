@@ -5,6 +5,9 @@ import {
   TextInput,
   Text,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Check } from 'lucide-react-native';
@@ -18,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import Toast from 'react-native-toast-message';
+import { validateAlgerianPhone } from '@/utils/validation';
 
 const FIELDS: { key: string; label: string; required?: boolean; placeholder?: string; keyboardType?: any; maxLength?: number }[] = [
   { key: 'name', label: 'Nom du magasin', required: true, placeholder: 'Ex. Épicerie Ben Ali', maxLength: 100 },
@@ -33,12 +37,35 @@ export function NewStoreScreen() {
   const { refresh } = useApp();
   
   const [values, setValues] = useState<Record<string, string>>({});
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  React.useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const save = async () => {
     if (!values.name || !values.name.trim()) {
       Toast.show({ type: 'error', text1: 'Erreur', text2: 'Le nom du magasin est requis' });
       return;
     }
+    const phoneErr = validateAlgerianPhone(values.phone || '');
+    if (phoneErr) {
+      setPhoneError(phoneErr);
+      return;
+    }
+    setPhoneError(null);
     
     try {
       const store = await createStore({
@@ -61,6 +88,11 @@ export function NewStoreScreen() {
     <StatusBg>
       <TopBar title="Nouveau magasin" onBack={() => navigation.goBack()} rightIcon="none" />
       
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
+        style={{ flex: 1 }}
+      >
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 70, paddingBottom: insets.bottom + 110 }}
         keyboardShouldPersistTaps="handled"
@@ -85,13 +117,17 @@ export function NewStoreScreen() {
                 </View>
                 <TextInput
                   value={values[f.key] || ''}
-                  onChangeText={(text) => setValues({ ...values, [f.key]: text })}
+                  onChangeText={(text) => {
+                    setValues({ ...values, [f.key]: text });
+                    if (f.key === 'phone') setPhoneError(null);
+                  }}
                   placeholder={f.placeholder}
                   placeholderTextColor={c.white40}
                   keyboardType={f.keyboardType || 'default'}
                   maxLength={f.maxLength}
                   style={styles.input}
                 />
+                {f.key === 'phone' && phoneError && <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: '#FF4D4D', marginTop: 4, paddingHorizontal: 16 }}>{phoneError}</Text>}
               </View>
             ))}
           </View>
@@ -99,28 +135,31 @@ export function NewStoreScreen() {
       </ScrollView>
 
       {/* Action Dock */}
-      <View style={[styles.dockContainer, { paddingBottom: insets.bottom || 24, paddingTop: 32 }]} pointerEvents="box-none">
-        <BlurView intensity={20} tint="dark" style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,10,10,0.6)' }]} pointerEvents="none" />
-        <LinearGradient
-          colors={['rgba(10,10,10,0)', 'rgba(10,10,10,0.85)', '#0A0A0A']}
-          locations={[0, 0.35, 0.7]}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-        <View style={styles.dockInner}>
-          <Pressable stretch={false} onPress={save} style={styles.dockBtnPrimary}>
-            <LinearGradient
-              colors={['#9bff1f', c.lime, '#66c000']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-            />
-            <Check size={16} color={c.ink} strokeWidth={3} />
-            <Text style={styles.dockPrimaryText}>Enregistrer</Text>
-          </Pressable>
+      {!isKeyboardVisible && (
+        <View style={[styles.dockContainer, { paddingBottom: insets.bottom || 24, paddingTop: 32 }]} pointerEvents="box-none">
+          <BlurView intensity={20} tint="dark" style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,10,10,0.6)' }]} pointerEvents="none" />
+          <LinearGradient
+            colors={['rgba(10,10,10,0)', 'rgba(10,10,10,0.85)', '#0A0A0A']}
+            locations={[0, 0.35, 0.7]}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+          <View style={styles.dockInner}>
+            <Pressable stretch={false} onPress={save} style={styles.dockBtnPrimary}>
+              <LinearGradient
+                colors={['#9bff1f', c.lime, '#66c000']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
+              <Check size={16} color={c.ink} strokeWidth={3} />
+              <Text style={styles.dockPrimaryText}>Enregistrer</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      )}
+      </KeyboardAvoidingView>
     </StatusBg>
   );
 }

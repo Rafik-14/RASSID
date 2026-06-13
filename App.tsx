@@ -23,7 +23,6 @@ import {
   isOfflineLocked,
 } from '@/services/securityService';
 import { getDatabase } from '@/database';
-import { pushSyncQueue } from '@/services/syncService';
 import { hasRepProfile, getRepProfile } from '@/services/repService';
 import { applyRepProfile, hasSupabase } from '@/config/env';
 import { ProfileSetupScreen } from '@/screens/ProfileSetupScreen';
@@ -32,6 +31,9 @@ import { getSession } from '@/api/supabase';
 import { LoginScreen } from '@/screens/LoginScreen';
 import { registerBackgroundSync } from '@/services/backgroundSync';
 import { initCrashReporting } from '@/services/crashReporting';
+import { DialogProvider } from '@/components/DialogProvider';
+import { NetworkBanner } from '@/components/NetworkBanner';
+import { SyncLockScreen } from '@/components/SyncLockScreen';
 
 initCrashReporting();
 
@@ -57,9 +59,13 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [lockReason, setLockReason] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+
+  const handleLogout = useCallback(() => {
+    setAuthed(false);
+    setShowLogin(true);
+  }, []);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -123,39 +129,19 @@ export default function App() {
     }
   }, [fontsLoaded, ready]);
 
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const result = await pushSyncQueue();
-      if (result.success) {
-        Toast.show({
-          type: 'success',
-          text1: 'Synchronisation réussie',
-          text2: result.message,
-        });
-        const locked = await isOfflineLocked();
-        if (!locked) {
-          setLockReason(null);
-          const ok = await authenticateUser();
-          setAuthed(ok);
-        }
-      } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Échec de la synchronisation',
-          text2: result.message,
-        });
-      }
-    } catch (e: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Erreur',
-        text2: e.message || 'Erreur inconnue',
-      });
-    } finally {
-      setSyncing(false);
-    }
-  };
+  const renderShell = (
+    content: React.ReactNode,
+    options: { showNetwork?: boolean } = {}
+  ) => (
+    <DialogProvider>
+      <SafeAreaProvider onLayout={onLayout}>
+        {content}
+        {options.showNetwork && <NetworkBanner />}
+        <StatusBar style="light" />
+        <Toast />
+      </SafeAreaProvider>
+    </DialogProvider>
+  );
 
   if (!fontsLoaded || !ready) {
     return (
@@ -216,66 +202,52 @@ export default function App() {
 
   if (lockReason) {
     const isSyncLock = lockReason.includes('synchronisation');
-    return (
-      <SafeAreaProvider onLayout={onLayout}>
+    return renderShell(
+      isSyncLock ? (
+        <SyncLockScreen
+          lockReason={lockReason}
+          onUnlocked={() => {
+            setLockReason(null);
+            setAuthed(true);
+          }}
+        />
+      ) : (
         <View style={styles.splash}>
           <Text style={styles.logo}>RASSID</Text>
           <Text style={styles.lock}>{lockReason}</Text>
-          {isSyncLock && (
-            <TouchableOpacity
-              style={styles.syncButton}
-              onPress={handleSync}
-              disabled={syncing}
-              activeOpacity={0.8}
-            >
-              {syncing ? (
-                <ActivityIndicator color={colors.ink} size="small" />
-              ) : (
-                <Text style={styles.syncButtonText}>Synchroniser maintenant</Text>
-              )}
-            </TouchableOpacity>
-          )}
         </View>
-        <StatusBar style="light" />
-        <Toast />
-      </SafeAreaProvider>
+      )
     );
   }
 
   if (!authed) {
-    return (
-      <SafeAreaProvider onLayout={onLayout}>
-        <View style={styles.splash}>
-          <Text style={styles.logo}>RASSID</Text>
-          <Text style={styles.lock}>Authentification requise</Text>
-          <TouchableOpacity
-            style={styles.syncButton}
-            onPress={async () => {
-              const ok = await authenticateUser();
-              setAuthed(ok);
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.syncButtonText}>Réessayer</Text>
-          </TouchableOpacity>
-        </View>
-        <StatusBar style="light" />
-      </SafeAreaProvider>
+    return renderShell(
+      <View style={styles.splash}>
+        <Text style={styles.logo}>RASSID</Text>
+        <Text style={styles.lock}>Authentification requise</Text>
+        <TouchableOpacity
+          style={styles.syncButton}
+          onPress={async () => {
+            const ok = await authenticateUser();
+            setAuthed(ok);
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.syncButtonText}>Réessayer</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
-  return (
-    <SafeAreaProvider onLayout={onLayout}>
-      <AppProvider>
-        <NavigationContainer theme={navTheme}>
-          <ErrorBoundary>
-            <RootNavigator />
-          </ErrorBoundary>
-        </NavigationContainer>
-      </AppProvider>
-      <StatusBar style="light" />
-      <Toast />
-    </SafeAreaProvider>
+  return renderShell(
+    <AppProvider onLogout={handleLogout}>
+      <NavigationContainer theme={navTheme}>
+        <ErrorBoundary>
+          <RootNavigator />
+        </ErrorBoundary>
+      </NavigationContainer>
+    </AppProvider>,
+    { showNetwork: true }
   );
 }
 

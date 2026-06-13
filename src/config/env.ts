@@ -17,6 +17,7 @@ export const env = {
   repInitials: read('EXPO_PUBLIC_REP_INITIALS', 'AM'),
   printerMac: read('EXPO_PUBLIC_PRINTER_MAC'),
   offlineLockHours: Number(read('EXPO_PUBLIC_OFFLINE_LOCK_HOURS', '72')) || 72,
+  sentryDsn: read('EXPO_PUBLIC_SENTRY_DSN'),
 };
 
 export const hasSupabase = Boolean(env.supabaseUrl && env.supabaseAnonKey);

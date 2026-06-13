@@ -25,27 +25,6 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   // Enable WAL mode
   await db.execAsync('PRAGMA journal_mode = WAL;');
 
-  // ONE TIME FIX: If the local database was seeded with the old invalid string IDs, wipe it so it can re-seed with UUIDs
-  try {
-    const badStore = await db.getFirstAsync<{ store_id: string }>("SELECT store_id FROM stores WHERE store_id = 'store-epicerie-port'");
-    if (badStore) {
-      console.warn("Wiping local database due to invalid seed IDs...");
-      await db.execAsync(`
-        PRAGMA foreign_keys = OFF;
-        DROP TABLE IF EXISTS transaction_items;
-        DROP TABLE IF EXISTS transactions;
-        DROP TABLE IF EXISTS products;
-        DROP TABLE IF EXISTS stores;
-        DROP TABLE IF EXISTS sync_meta;
-        PRAGMA foreign_keys = ON;
-      `);
-      // Reset version so it runs migrations if needed
-      await db.execAsync('PRAGMA user_version = 0');
-    }
-  } catch (e) {
-    // Table might not exist yet, that's fine
-  }
-
   // Run DDL for fresh database
   await db.execAsync(DDL);
 

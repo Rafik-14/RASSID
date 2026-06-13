@@ -129,13 +129,20 @@ export async function getProducts(): Promise<Product[]> {
   return db.getAllAsync<Product>('SELECT * FROM products ORDER BY name');
 }
 
-async function getLastTxHash(storeId: string): Promise<string | null> {
-  const db = await getDatabase();
-  const row = await db.getFirstAsync<{ hash_signature: string }>(
+async function getLastTxHash(storeId: string, dbOrTxn?: any): Promise<string | null> {
+  const conn = dbOrTxn ?? await getDatabase();
+  const row = await conn.getFirstAsync(
     `SELECT hash_signature FROM transactions WHERE store_id = ? ORDER BY created_at DESC LIMIT 1`,
     [storeId]
-  );
+  ) as { hash_signature: string } | null;
   return row?.hash_signature ?? null;
+}
+
+async function getStoreByIdTxn(storeId: string, dbOrTxn: any): Promise<Store | null> {
+  return dbOrTxn.getFirstAsync(
+    'SELECT * FROM stores WHERE store_id = ? AND is_deleted = 0',
+    [storeId]
+  ) as Promise<Store | null>;
 }
 
 export interface CreateTransactionInput {
@@ -156,7 +163,7 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
     const repId = session?.user?.id ?? '';
     const txId = Crypto.randomUUID();
     const createdAt = isoNow();
-    const parentHash = await getLastTxHash(input.storeId);
+    const parentHash = await getLastTxHash(input.storeId, txn);
     const signedAmount =
       input.txType === 1 ? Math.abs(input.amount) : -Math.abs(input.amount);
 
@@ -199,7 +206,7 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
     }
 
     const balanceDelta = signedAmount;
-    const store = await getStoreById(input.storeId);
+    const store = await getStoreByIdTxn(input.storeId, txn);
     if (store) {
       const newBalance = store.current_balance + balanceDelta;
       if (newBalance < 0) {
@@ -248,7 +255,7 @@ export async function voidTransaction(originalTx: Transaction): Promise<Transact
     const repId = session?.user?.id ?? '';
     const txId = Crypto.randomUUID();
     const createdAt = isoNow();
-    const parentHash = await getLastTxHash(originalTx.store_id);
+    const parentHash = await getLastTxHash(originalTx.store_id, txn);
     
     const reverseAmount = -originalTx.amount;
 
@@ -280,9 +287,12 @@ export async function voidTransaction(originalTx: Transaction): Promise<Transact
     );
 
     const balanceDelta = reverseAmount;
-    const store = await getStoreById(originalTx.store_id);
+    const store = await getStoreByIdTxn(originalTx.store_id, txn);
     if (store) {
       const newBalance = store.current_balance + balanceDelta;
+      if (newBalance < 0) {
+        throw new Error('L\'annulation entraînerait un solde négatif.');
+      }
       await txn.runAsync(
         `UPDATE stores SET current_balance = ?, sync_status = 'pending' WHERE store_id = ?`,
         [newBalance, originalTx.store_id]

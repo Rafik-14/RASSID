@@ -66,6 +66,15 @@ DECLARE
 BEGIN
   FOR item IN SELECT * FROM jsonb_array_elements(payload)
   LOOP
+    -- Security: verify store ownership before inserting
+    IF NOT EXISTS (
+      SELECT 1 FROM stores
+      WHERE store_id = (item->>'store_id')::UUID
+      AND rep_id = auth.uid()::TEXT
+    ) THEN
+      RAISE EXCEPTION 'Unauthorized: store % does not belong to user', item->>'store_id';
+    END IF;
+
     INSERT INTO transactions (
       tx_id, store_id, rep_id, tx_type, amount, reference_no, note,
       hash_signature, parent_hash, sync_status, created_at
@@ -158,6 +167,10 @@ CREATE POLICY "Users can insert their own transaction items"
 CREATE POLICY "Authenticated users can view products"
   ON products FOR SELECT
   USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can insert products"
+  ON products FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
 
 -- updated_at auto-update trigger for pull sync
 CREATE OR REPLACE FUNCTION update_updated_at_column()

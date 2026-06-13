@@ -19,15 +19,22 @@ import { BlurView } from 'expo-blur';
 import Toast from 'react-native-toast-message';
 import { getRepProfile, saveRepProfile } from '@/services/repService';
 import { applyRepProfile } from '@/config/env';
+import { validateAlgerianPhone } from '@/utils/validation';
+import { signOut } from '@/api/supabase';
+import { useDialog } from '@/components/DialogProvider';
+import { useApp } from '@/store/AppContext';
 
 import { computeInitials } from '@/utils/text';
 
 export function ProfileEditScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { showDestructive } = useDialog();
+  const { logout } = useApp();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [saving, setSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const initials = name.trim().length > 0 ? computeInitials(name) : '?';
 
@@ -41,6 +48,12 @@ export function ProfileEditScreen() {
   }, []);
 
   const handleSave = async () => {
+    const phoneErr = validateAlgerianPhone(phone);
+    if (phoneErr) {
+      setPhoneError(phoneErr);
+      return;
+    }
+    setPhoneError(null);
     if (!name.trim()) {
       Toast.show({ type: 'error', text1: 'Nom requis' });
       return;
@@ -74,7 +87,6 @@ export function ProfileEditScreen() {
         >
           {/* Live avatar */}
           <Animated.View entering={FadeIn.duration(500)} style={styles.avatarWrapper}>
-            <View style={styles.avatarGlow} />
             <View style={styles.avatar}>
               <LinearGradient
                 colors={['#9bff1f', c.lime, '#5fc000']}
@@ -115,7 +127,7 @@ export function ProfileEditScreen() {
               <Text style={styles.fieldLabel}>TÉLÉPHONE</Text>
               <TextInput
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(t) => { setPhone(t); setPhoneError(null); }}
                 placeholder="0555 12 34 56"
                 placeholderTextColor={c.white40}
                 keyboardType="phone-pad"
@@ -124,6 +136,41 @@ export function ProfileEditScreen() {
                 style={styles.fieldInput}
               />
             </View>
+            {phoneError && <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: '#FF4D4D', marginTop: 4, paddingHorizontal: 18 }}>{phoneError}</Text>}
+          </Animated.View>
+
+          <Animated.View entering={FadeInUp.duration(450).delay(200)} style={{ width: '100%', marginTop: 24 }}>
+            <Pressable
+              onPress={() => {
+                showDestructive({
+                  title: 'Se déconnecter',
+                  message: 'Vos données locales seront conservées. Vous devrez vous reconnecter pour synchroniser.',
+                  confirmText: 'Déconnexion',
+                  onConfirm: async () => {
+                    try {
+                      await signOut();
+                      logout();
+                      Toast.show({ type: 'success', text1: 'Déconnecté' });
+                    } catch (e) {
+                      Toast.show({ type: 'error', text1: 'Erreur', text2: 'Impossible de se déconnecter.' });
+                    }
+                  },
+                });
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                paddingVertical: 14,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: 'rgba(255,77,77,0.2)',
+                backgroundColor: 'rgba(255,77,77,0.06)',
+              }}
+            >
+              <Text style={{ fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#FF4D4D' }}>Se déconnecter</Text>
+            </Pressable>
           </Animated.View>
         </View>
 

@@ -11,8 +11,10 @@ import {
   Animated as RNAnimated,
   Easing as RNEasing,
   Modal,
-  Alert,
+  KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
+import { useDialog } from '@/components/DialogProvider';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { Car, Banknote, Undo2, Tag, ChevronRight, Check, Printer, Plus, Minus, Search } from 'lucide-react-native';
@@ -56,6 +58,7 @@ export function NewOperationScreen() {
   const route = useRoute<Route>();
   const insets = useSafeAreaInsets();
   const { refresh } = useApp();
+  const { showConfirm } = useDialog();
 
   const [type, setType] = useState<OperationType>(route.params?.type || 'livraison');
   const [storeId, setStoreId] = useState<string | undefined>(route.params?.storeId);
@@ -82,6 +85,23 @@ export function NewOperationScreen() {
   
   // Note
   const [note, setNote] = useState('');
+
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  React.useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -267,14 +287,13 @@ export function NewOperationScreen() {
       };
 
       if (total >= 50000) {
-        Alert.alert(
-          'Confirmer le montant',
-          `Vous êtes sur le point d'enregistrer une opération de ${formatDAFull(total).replace(' DA', '')} DA. Continuer ?`,
-          [
-            { text: 'Annuler', style: 'cancel' },
-            { text: 'Confirmer', onPress: saveOperation }
-          ]
-        );
+        showConfirm({
+          title: 'Confirmer le montant',
+          message: `Vous êtes sur le point d'enregistrer une opération de ${formatDAFull(total).replace(' DA', '')} DA. Continuer ?`,
+          confirmText: 'Confirmer',
+          accentColor: '#FBBF24',
+          onConfirm: saveOperation,
+        });
       } else {
         await saveOperation();
       }
@@ -288,6 +307,11 @@ export function NewOperationScreen() {
     <StatusBg>
       <TopBar title="Opération" onBack={() => navigation.goBack()} rightIcon="none" />
 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
+        style={{ flex: 1 }}
+      >
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 70, paddingBottom: insets.bottom + 120 }} keyboardShouldPersistTaps="handled">
         
         {/* Segmented Control */}
@@ -512,50 +536,53 @@ export function NewOperationScreen() {
       </ScrollView>
 
       {/* Action Dock */}
-      <View style={[styles.dockContainer, { paddingBottom: (insets.bottom || 24) + 12, paddingTop: 48 }]} pointerEvents="box-none">
-        <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-        <LinearGradient
-          colors={['rgba(10,10,10,0)', 'rgba(10,10,10,0.6)', '#0A0A0A']}
-          locations={[0, 0.5, 0.9]}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-        <View style={styles.dockInner}>
-          {isLiv && (
-            <Pressable stretch={false} style={styles.dockBtnSecondary}>
-              <LinearGradient colors={['#1d1d1d', '#161616']} style={[StyleSheet.absoluteFillObject, { borderRadius: 100 }]} />
-              <Printer size={15} color={c.white} strokeWidth={2.2} />
-              <Text style={styles.dockSecondaryText}>BL</Text>
-            </Pressable>
-          )}
-          
-          <View style={{ flex: 1, position: 'relative' }}>
-            <View style={[
-              StyleSheet.absoluteFillObject,
-              {
-                backgroundColor: activeType.color,
-                borderRadius: 100,
-                shadowColor: activeType.color,
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.9,
-                shadowRadius: 32,
-                elevation: 24,
-              }
-            ]} />
-            <Pressable stretch={false} onPress={confirm} style={styles.dockBtnPrimary}>
-              <LinearGradient
-                colors={[activeType.color + 'ee', activeType.color, activeType.color + 'cc']}
-                locations={[0, 0.5, 1]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[StyleSheet.absoluteFillObject, { borderRadius: 100 }]}
-              />
-              <Check size={16} color={c.ink} strokeWidth={3} />
-              <Text style={styles.dockPrimaryText}>Confirmer {activeType.label.toLowerCase()}</Text>
-            </Pressable>
+      {!isKeyboardVisible && (
+        <View style={[styles.dockContainer, { paddingBottom: (insets.bottom || 24) + 12, paddingTop: 48 }]} pointerEvents="box-none">
+          <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+          <LinearGradient
+            colors={['rgba(10,10,10,0)', 'rgba(10,10,10,0.6)', '#0A0A0A']}
+            locations={[0, 0.5, 0.9]}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+          <View style={styles.dockInner}>
+            {isLiv && (
+              <Pressable stretch={false} style={styles.dockBtnSecondary}>
+                <LinearGradient colors={['#1d1d1d', '#161616']} style={[StyleSheet.absoluteFillObject, { borderRadius: 100 }]} />
+                <Printer size={15} color={c.white} strokeWidth={2.2} />
+                <Text style={styles.dockSecondaryText}>BL</Text>
+              </Pressable>
+            )}
+            
+            <View style={{ flex: 1, position: 'relative' }}>
+              <View style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: activeType.color,
+                  borderRadius: 100,
+                  shadowColor: activeType.color,
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.9,
+                  shadowRadius: 32,
+                  elevation: 24,
+                }
+              ]} />
+              <Pressable stretch={false} onPress={confirm} style={styles.dockBtnPrimary}>
+                <LinearGradient
+                  colors={[activeType.color + 'ee', activeType.color, activeType.color + 'cc']}
+                  locations={[0, 0.5, 1]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[StyleSheet.absoluteFillObject, { borderRadius: 100 }]}
+                />
+                <Check size={16} color={c.ink} strokeWidth={3} />
+                <Text style={styles.dockPrimaryText}>Confirmer {activeType.label.toLowerCase()}</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
-      </View>
+      )}
+      </KeyboardAvoidingView>
 
       {/* Modal for adding products */}
       <Modal
@@ -573,7 +600,11 @@ export function NewOperationScreen() {
             <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.75)' }} />
           </Pressable>
 
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ width: '100%' }}
+          >
+            <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Ajouter des articles</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -681,6 +712,7 @@ export function NewOperationScreen() {
               )}
             </ScrollView>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -700,7 +732,11 @@ export function NewOperationScreen() {
             <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.8)' }} />
           </Pressable>
 
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ width: '100%' }}
+          >
+            <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Nouveau produit</Text>
               <Pressable
@@ -796,6 +832,7 @@ export function NewOperationScreen() {
               </View>
             </ScrollView>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </StatusBg>

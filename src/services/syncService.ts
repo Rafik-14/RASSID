@@ -23,9 +23,10 @@ export async function getPendingTransactions(): Promise<TransactionWithItems[]> 
   );
   if (txs.length === 0) return [];
   
-  const txIds = txs.map(t => `'${t.tx_id}'`).join(',');
+  const placeholders = txs.map(() => '?').join(',');
   const allItems = await db.getAllAsync<TransactionItem>(
-    `SELECT * FROM transaction_items WHERE tx_id IN (${txIds})`
+    `SELECT * FROM transaction_items WHERE tx_id IN (${placeholders})`,
+    txs.map(t => t.tx_id)
   );
   
   return txs.map(tx => ({

@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { computeInitials } from '@/utils/text';
 
 const REP_PROFILE_KEY = 'rassid_rep_profile';
 

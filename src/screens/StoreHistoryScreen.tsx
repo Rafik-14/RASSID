@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, FlatList, Text, StyleSheet, LayoutAnimation, Platform, UIManager, Alert } from 'react-native';
+import { View, FlatList, Text, StyleSheet, LayoutAnimation, Platform, UIManager, ActivityIndicator } from 'react-native';
+import { useDialog } from '@/components/DialogProvider';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
@@ -52,11 +53,14 @@ export function StoreHistoryScreen() {
   const route = useRoute<Route>();
   const insets = useSafeAreaInsets();
   const { refreshKey } = useApp();
+  const { showDialog, showDestructive } = useDialog();
   const [filter, setFilter] = useState<HistoryFilter>('all');
   const [txs, setTxs] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
+      setLoading(true);
       setTxs(await getStoreTransactions(route.params.storeId, filter));
     } catch (e: any) {
       console.error('Load error:', e);
@@ -65,6 +69,8 @@ export function StoreHistoryScreen() {
         text1: 'Erreur de chargement',
         text2: e.message || 'Impossible de charger les données.',
       });
+    } finally {
+      setLoading(false);
     }
   }, [route.params.storeId, filter]);
 
@@ -91,39 +97,33 @@ export function StoreHistoryScreen() {
       Toast.show({ type: 'info', text1: 'Info', text2: 'Cette opération est déjà annulée.' });
       return;
     }
-    Alert.alert(
-      'Options de l\'opération',
-      `Que voulez-vous faire avec cette opération de ${formatDAFull(tx.amount).replace(' DA', '')} DA ?`,
-      [
-        { text: 'Fermer', style: 'cancel' },
-        { 
-          text: 'Annuler l\'opération', 
+    showDialog({
+      title: 'Options de l\'opération',
+      message: `Que voulez-vous faire avec cette opération de ${formatDAFull(tx.amount).replace(' DA', '')} DA ?`,
+      buttons: [
+        {
+          text: 'Annuler l\'opération',
           style: 'destructive',
           onPress: () => {
-            Alert.alert(
-              'Confirmation',
-              'Êtes-vous sûr de vouloir annuler cette opération ? Cette action créera une opération d\'annulation.',
-              [
-                { text: 'Non', style: 'cancel' },
-                {
-                  text: 'Oui, annuler',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await voidTransaction(tx);
-                      Toast.show({ type: 'success', text1: 'Succès', text2: 'Opération annulée avec succès.' });
-                      load();
-                    } catch (e: any) {
-                      Toast.show({ type: 'error', text1: 'Erreur', text2: e.message || 'Impossible d\'annuler.' });
-                    }
-                  }
+            showDestructive({
+              title: 'Confirmation',
+              message: 'Êtes-vous sûr de vouloir annuler cette opération ? Cette action créera une opération d\'annulation.',
+              confirmText: 'Oui, annuler',
+              onConfirm: async () => {
+                try {
+                  await voidTransaction(tx);
+                  Toast.show({ type: 'success', text1: 'Succès', text2: 'Opération annulée avec succès.' });
+                  load();
+                } catch (e: any) {
+                  Toast.show({ type: 'error', text1: 'Erreur', text2: e.message || 'Impossible d\'annuler.' });
                 }
-              ]
-            );
-          }
-        }
-      ]
-    );
+              },
+            });
+          },
+        },
+        { text: 'Fermer', style: 'cancel' },
+      ],
+    });
   };
   
   // Calculate month net
@@ -204,8 +204,14 @@ export function StoreHistoryScreen() {
               })}
             </View>
 
-            {txs.length === 0 && (
-              <Text style={styles.emptyText}>Aucune opération</Text>
+            {loading ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <ActivityIndicator color={c.lime} />
+              </View>
+            ) : (
+              txs.length === 0 && (
+                <Text style={styles.emptyText}>Aucune opération</Text>
+              )
             )}
           </>
         }

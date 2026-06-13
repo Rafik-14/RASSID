@@ -5,6 +5,9 @@ import {
   TextInput,
   Text,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { Check } from 'lucide-react-native';
@@ -36,6 +39,22 @@ export function EditStoreScreen() {
   
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  React.useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -97,66 +116,74 @@ export function EditStoreScreen() {
     <StatusBg>
       <TopBar title="Modifier le magasin" onBack={() => navigation.goBack()} rightIcon="none" />
       
-      <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 70, paddingBottom: insets.bottom + 110 }}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
+        style={{ flex: 1 }}
       >
-        <Animated.View entering={FadeInUp.duration(400)} style={styles.formContainer}>
-          <Eyebrow style={{ marginBottom: 14 }}>Informations du magasin</Eyebrow>
+        <ScrollView
+          contentContainerStyle={{ paddingTop: insets.top + 70, paddingBottom: insets.bottom + 110 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View entering={FadeInUp.duration(400)} style={styles.formContainer}>
+            <Eyebrow style={{ marginBottom: 14 }}>Informations du magasin</Eyebrow>
 
-          <View style={styles.fieldsWrapper}>
-            <LinearGradient colors={['#1d1d1d', '#141414']} style={StyleSheet.absoluteFillObject} />
-            
-            {FIELDS.map((f, i) => (
-              <View
-                key={f.key}
-                style={[
-                  styles.fieldRow,
-                  i === FIELDS.length - 1 && { borderBottomWidth: 0 }
-                ]}
-              >
-                <View style={styles.labelRow}>
-                  <Text style={styles.labelText}>{f.label}</Text>
-                  {f.required && <Text style={styles.requiredStar}>*</Text>}
+            <View style={styles.fieldsWrapper}>
+              <LinearGradient colors={['#1d1d1d', '#141414']} style={StyleSheet.absoluteFillObject} />
+              
+              {FIELDS.map((f, i) => (
+                <View
+                  key={f.key}
+                  style={[
+                    styles.fieldRow,
+                    i === FIELDS.length - 1 && { borderBottomWidth: 0 }
+                  ]}
+                >
+                  <View style={styles.labelRow}>
+                    <Text style={styles.labelText}>{f.label}</Text>
+                    {f.required && <Text style={styles.requiredStar}>*</Text>}
+                  </View>
+                  <TextInput
+                    value={values[f.key] || ''}
+                    onChangeText={(text) => setValues({ ...values, [f.key]: text })}
+                    placeholder={f.placeholder}
+                    placeholderTextColor={c.white40}
+                    keyboardType={f.keyboardType || 'default'}
+                    maxLength={f.maxLength}
+                    style={styles.input}
+                  />
                 </View>
-                <TextInput
-                  value={values[f.key] || ''}
-                  onChangeText={(text) => setValues({ ...values, [f.key]: text })}
-                  placeholder={f.placeholder}
-                  placeholderTextColor={c.white40}
-                  keyboardType={f.keyboardType || 'default'}
-                  maxLength={f.maxLength}
-                  style={styles.input}
-                />
-              </View>
-            ))}
-          </View>
-        </Animated.View>
-      </ScrollView>
+              ))}
+            </View>
+          </Animated.View>
+        </ScrollView>
 
-      {/* Action Dock */}
-      <View style={[styles.dockContainer, { paddingBottom: insets.bottom || 24, paddingTop: 32 }]} pointerEvents="box-none">
-        <BlurView intensity={20} tint="dark" style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,10,10,0.6)' }]} pointerEvents="none" />
-        <LinearGradient
-          colors={['rgba(10,10,10,0)', 'rgba(10,10,10,0.85)', '#0A0A0A']}
-          locations={[0, 0.35, 0.7]}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-        <View style={styles.dockInner}>
-          <Pressable stretch={false} onPress={save} style={styles.dockBtnPrimary}>
+        {/* Action Dock */}
+        {!isKeyboardVisible && (
+          <View style={[styles.dockContainer, { paddingBottom: insets.bottom || 24, paddingTop: 32 }]} pointerEvents="box-none">
+            <BlurView intensity={20} tint="dark" style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,10,10,0.6)' }]} pointerEvents="none" />
             <LinearGradient
-              colors={['#9bff1f', c.lime, '#66c000']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+              colors={['rgba(10,10,10,0)', 'rgba(10,10,10,0.85)', '#0A0A0A']}
+              locations={[0, 0.35, 0.7]}
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
-            <Check size={16} color={c.ink} strokeWidth={3} />
-            <Text style={styles.dockPrimaryText}>Mettre à jour</Text>
-          </Pressable>
-        </View>
-      </View>
+            <View style={styles.dockInner}>
+              <Pressable stretch={false} onPress={save} style={styles.dockBtnPrimary}>
+                <LinearGradient
+                  colors={['#9bff1f', c.lime, '#66c000']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                  pointerEvents="none"
+                />
+                <Check size={16} color={c.ink} strokeWidth={3} />
+                <Text style={styles.dockPrimaryText}>Mettre à jour</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+      </KeyboardAvoidingView>
     </StatusBg>
   );
 }

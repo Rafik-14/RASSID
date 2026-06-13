@@ -62,7 +62,6 @@ export function ProfileSetupScreen({ onComplete }: Props) {
 
           {/* Live avatar */}
           <Animated.View entering={FadeIn.duration(700).delay(100)} style={styles.avatarWrapper}>
-            <View style={styles.avatarGlow} />
             <View style={styles.avatar}>
               <LinearGradient
                 colors={['#9bff1f', c.lime, '#5fc000']}

@@ -6,8 +6,9 @@ import {
   StyleSheet,
   Linking,
   Platform,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { useDialog } from '@/components/DialogProvider';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -45,10 +46,13 @@ export function StoreProfileScreen() {
   const route = useRoute<Route>();
   const insets = useSafeAreaInsets();
   const { refreshKey, refresh } = useApp();
+  const { showDestructive } = useDialog();
   const [store, setStore] = useState<Store | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
+      setLoading(true);
       setStore(await getStoreById(route.params.storeId));
     } catch (e: any) {
       console.error('Load error:', e);
@@ -57,6 +61,8 @@ export function StoreProfileScreen() {
         text1: 'Erreur de chargement',
         text2: e.message || 'Impossible de charger les données.',
       });
+    } finally {
+      setLoading(false);
     }
   }, [route.params.storeId]);
 
@@ -66,10 +72,26 @@ export function StoreProfileScreen() {
     }, [load, refreshKey])
   );
 
-  if (!store) {
+  if (loading) {
     return (
       <StatusBg>
         <TopBar title="…" onBack={() => navigation.goBack()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={c.lime} size="large" />
+        </View>
+      </StatusBg>
+    );
+  }
+
+  if (!store) {
+    return (
+      <StatusBg>
+        <TopBar title="Introuvable" onBack={() => navigation.goBack()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <Text style={{ fontSize: 13, fontFamily: 'Inter_400Regular', color: c.white40, textAlign: 'center' }}>
+            Ce magasin n'existe pas ou a été supprimé.
+          </Text>
+        </View>
       </StatusBg>
     );
   }
@@ -97,27 +119,21 @@ export function StoreProfileScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      'Supprimer le magasin',
-      `Êtes-vous sûr de vouloir supprimer ${store.name} ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Supprimer', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await softDeleteStore(store.store_id);
-              refresh();
-              Toast.show({ type: 'success', text1: 'Succès', text2: 'Magasin supprimé' });
-              navigation.goBack();
-            } catch (e: any) {
-              Toast.show({ type: 'error', text1: 'Erreur', text2: e.message });
-            }
-          }
+    showDestructive({
+      title: 'Supprimer le magasin',
+      message: `Êtes-vous sûr de vouloir supprimer ${store.name} ? Cette action est irréversible.`,
+      confirmText: 'Supprimer',
+      onConfirm: async () => {
+        try {
+          await softDeleteStore(store.store_id);
+          refresh();
+          Toast.show({ type: 'success', text1: 'Succès', text2: 'Magasin supprimé' });
+          navigation.goBack();
+        } catch (e: any) {
+          Toast.show({ type: 'error', text1: 'Erreur', text2: e.message });
         }
-      ]
-    );
+      },
+    });
   };
 
   return (

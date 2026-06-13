@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Plus, ChevronRight, Phone } from 'lucide-react-native';
@@ -14,10 +14,11 @@ import { StoreRow } from '@/components/StoreRow';
 import { SyncBadge } from '@/components/SyncBadge';
 import { c } from '@/components/tokens';
 import { env } from '@/config/env';
-import { getDashboardKpis, getMonthlyChartData, getAllStores } from '@/database/queries';
+import { getDashboardKpis, getMonthlyChartData, getAllStores, getOverdueStores } from '@/database/queries';
 import type { Store } from '@/types';
 import type { RootStackParamList } from '@/navigation/types';
 import { useApp } from '@/store/AppContext';
+import { useDialog } from '@/components/DialogProvider';
 import Toast from 'react-native-toast-message';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing } from 'react-native-reanimated';
 
@@ -27,27 +28,34 @@ export function DashboardScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { refreshKey, pendingSync, syncing, refresh, syncNow } = useApp();
+  const { showDialog } = useDialog();
   
   const [kpis, setKpis] = useState({ totalReceivables: 0, activeStores: 0, cashCollectedToday: 0 });
   const [livraisonChart, setLivraisonChart] = useState({ total: 0, points: [] as number[] });
   const [paiementChart, setPaiementChart] = useState({ total: 0, points: [] as number[] });
   const [stores, setStores] = useState<Store[]>([]);
+  const [overdueStores, setOverdueStores] = useState<Store[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [k, l, p, s] = await Promise.all([
+      const [k, l, p, s, overdue] = await Promise.all([
         getDashboardKpis(),
         getMonthlyChartData(1),
         getMonthlyChartData(2),
         getAllStores(),
+        getOverdueStores(),
       ]);
       setKpis(k);
       setLivraisonChart(l);
       setPaiementChart(p);
       setStores(s);
+      setOverdueStores(overdue);
+      setLoading(false);
     } catch (e: any) {
       console.error('Load error:', e);
+      setLoading(false);
       Toast.show({
         type: 'error',
         text1: 'Erreur de chargement',
@@ -74,19 +82,19 @@ export function DashboardScreen() {
       const msg = await syncNow();
       Toast.show({ type: 'success', text1: 'Synchronisation', text2: msg });
     } catch (e: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Échec de la synchronisation',
-        text2: e.message || 'Erreur inconnue',
+      const message = e.message || 'Erreur inconnue';
+      showDialog({
+        title: 'Échec de la synchronisation',
+        message,
+        accentColor: c.amber,
+        buttons: [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Réessayer', onPress: handleSync },
+        ],
       });
     }
   };
 
-  const overdueStores = stores.filter(s => {
-    const lastPayment = s.last_payment_date ? new Date(s.last_payment_date).getTime() : 0;
-    const diffDays = Math.floor((Date.now() - lastPayment) / (1000 * 60 * 60 * 24));
-    return s.current_balance > 0 && diffDays >= 10;
-  });
   const overdueCount = overdueStores.length;
   const route = stores.slice(0, 5); // first 5 stores
 
@@ -116,6 +124,16 @@ export function DashboardScreen() {
     transform: [{ scale: glowScale.value }],
     opacity: glowOpacity.value,
   }));
+
+  if (loading) {
+    return (
+      <StatusBg>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator color={c.lime} size="large" />
+        </View>
+      </StatusBg>
+    );
+  }
 
   return (
     <StatusBg>
@@ -316,6 +334,11 @@ export function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   greetingSection: {
     paddingHorizontal: 22,
     marginBottom: 20,

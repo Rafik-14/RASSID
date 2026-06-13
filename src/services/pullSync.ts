@@ -38,6 +38,16 @@ export async function pullFromServer(): Promise<{ pulled: number; message: strin
 
   if (!storeError && stores) {
     for (const s of stores) {
+      const local = await db.getFirstAsync<{ is_deleted: number; sync_status: string }>(
+        'SELECT is_deleted, sync_status FROM stores WHERE store_id = ?',
+        [s.store_id]
+      );
+
+      // Don't restore a store that was deleted locally and not yet pushed to the server
+      if (local?.is_deleted === 1 && local.sync_status === 'pending') {
+        continue;
+      }
+
       await db.runAsync(
         `INSERT OR REPLACE INTO stores
          (store_id, rep_id, name, neighborhood, contact_person, phone, address,
@@ -48,8 +58,8 @@ export async function pullFromServer(): Promise<{ pulled: number; message: strin
          s.address, s.current_balance, s.total_delivered, s.total_collected,
          s.last_delivery_date, s.last_payment_date, s.is_deleted ? 1 : 0]
       );
+      pulled += 1;
     }
-    pulled += stores.length;
   }
 
   return { pulled, message: `${pulled} élément(s) récupéré(s)` };

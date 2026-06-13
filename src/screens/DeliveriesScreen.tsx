@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Truck, Plus } from 'lucide-react-native';
@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBg, Pressable, ElevatedCard, Eyebrow, AnimatedNumber } from '@/components/Chrome';
 import { TopBar } from '@/components/TopBar';
 import { c } from '@/components/tokens';
+import { useDialog } from '@/components/DialogProvider';
 import type { RootStackParamList } from '@/navigation/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getMonthlyChartData, getGlobalTransactions, voidTransaction } from '@/database/queries';
@@ -20,17 +21,23 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 export function DeliveriesScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const { showDialog, showDestructive } = useDialog();
   const [monthTotal, setMonthTotal] = useState(0);
   const [txs, setTxs] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(() => {
-    getMonthlyChartData(1)
-      .then(data => setMonthTotal(data.total))
-      .catch(console.error);
-
-    getGlobalTransactions(1, 50)
-      .then(setTxs)
-      .catch(console.error);
+  const load = useCallback(async () => {
+    try {
+      const data = await getMonthlyChartData(1);
+      setMonthTotal(data.total);
+      const transactions = await getGlobalTransactions(1, 50);
+      setTxs(transactions);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useFocusEffect(
@@ -50,43 +57,39 @@ export function DeliveriesScreen() {
       Toast.show({ type: 'info', text1: 'Info', text2: 'Cette opération est déjà annulée.' });
       return;
     }
-    Alert.alert(
-      'Options de l\'opération',
-      `Que voulez-vous faire avec cette opération de ${formatDAFull(tx.amount).replace(' DA', '')} DA ?`,
-      [
-        { text: 'Fermer', style: 'cancel' },
-        { 
-          text: 'Annuler l\'opération', 
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Confirmation',
-              'Êtes-vous sûr de vouloir annuler cette opération ?',
-              [
-                { text: 'Non', style: 'cancel' },
-                {
-                  text: 'Oui, annuler',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await voidTransaction(tx);
-                      Toast.show({ type: 'success', text1: 'Succès', text2: 'Opération annulée avec succès.' });
-                      load();
-                    } catch (e: any) {
-                      Toast.show({ type: 'error', text1: 'Erreur', text2: e.message || 'Impossible d\'annuler.' });
-                    }
-                  }
-                }
-              ]
-            );
-          }
-        },
+    showDialog({
+      title: 'Options de l\'opération',
+      message: `Que voulez-vous faire avec cette opération de ${formatDAFull(tx.amount).replace(' DA', '')} DA ?`,
+      accentColor: c.red,
+      buttons: [
         {
           text: 'Voir le magasin',
-          onPress: () => navigation.navigate('StoreProfile', { storeId: tx.store_id })
-        }
-      ]
-    );
+          color: c.green,
+          onPress: () => navigation.navigate('StoreProfile', { storeId: tx.store_id }),
+        },
+        {
+          text: 'Annuler l\'opération',
+          style: 'destructive',
+          onPress: () => {
+            showDestructive({
+              title: 'Confirmation',
+              message: 'Êtes-vous sûr de vouloir annuler cette opération ?',
+              confirmText: 'Oui, annuler',
+              onConfirm: async () => {
+                try {
+                  await voidTransaction(tx);
+                  Toast.show({ type: 'success', text1: 'Succès', text2: 'Opération annulée avec succès.' });
+                  load();
+                } catch (e: any) {
+                  Toast.show({ type: 'error', text1: 'Erreur', text2: e.message || 'Impossible d\'annuler.' });
+                }
+              },
+            });
+          },
+        },
+        { text: 'Fermer', style: 'cancel' },
+      ],
+    });
   };
 
   const renderHeader = () => (
@@ -119,34 +122,43 @@ export function DeliveriesScreen() {
     </>
   );
 
-  const renderEmpty = () => (
-    <ElevatedCard style={styles.emptyCard}>
-      <View style={{ alignItems: 'center', width: '100%' }}>
-        <View style={styles.emptyIconBg}>
-          <Truck size={20} color={c.red} strokeWidth={2.4} />
+  const renderEmpty = () => {
+    if (loading) {
+      return (
+        <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+          <ActivityIndicator color={c.lime} />
         </View>
-        <Text style={styles.emptyTitle}>Aucune livraison récente</Text>
-        <Text style={styles.emptySub}>
-          Démarrez depuis un magasin ou créez une opération directe.
-        </Text>
+      );
+    }
+    return (
+      <ElevatedCard style={styles.emptyCard}>
+        <View style={{ alignItems: 'center', width: '100%' }}>
+          <View style={styles.emptyIconBg}>
+            <Truck size={20} color={c.red} strokeWidth={2.4} />
+          </View>
+          <Text style={styles.emptyTitle}>Aucune livraison récente</Text>
+          <Text style={styles.emptySub}>
+            Démarrez depuis un magasin ou créez une opération directe.
+          </Text>
 
-        <Pressable
-          stretch={false}
-          onPress={() => navigation.navigate('NewOperation', { type: 'livraison' })}
-          style={styles.button}
-        >
-          <LinearGradient
-            colors={['#9bff1f', c.lime, '#66c000']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[StyleSheet.absoluteFillObject, { borderRadius: 100 }]}
-          />
-          <Plus size={18} color={c.ink} strokeWidth={2.5} />
-          <Text style={styles.buttonText}>Nouvelle livraison</Text>
-        </Pressable>
-      </View>
-    </ElevatedCard>
-  );
+          <Pressable
+            stretch={false}
+            onPress={() => navigation.navigate('NewOperation', { type: 'livraison' })}
+            style={styles.button}
+          >
+            <LinearGradient
+              colors={['#9bff1f', c.lime, '#66c000']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[StyleSheet.absoluteFillObject, { borderRadius: 100 }]}
+            />
+            <Plus size={18} color={c.ink} strokeWidth={2.5} />
+            <Text style={styles.buttonText}>Nouvelle livraison</Text>
+          </Pressable>
+        </View>
+      </ElevatedCard>
+    );
+  };
 
   const renderItem = ({ item }: { item: Transaction }) => {
     const isVoided = voidedTxIds.has(item.tx_id);
@@ -168,13 +180,24 @@ export function DeliveriesScreen() {
 
   return (
     <StatusBg>
-      <TopBar title="Livraisons" />
+      <TopBar />
       <FlatList
         data={displayTxs}
         keyExtractor={(item) => item.tx_id}
         renderItem={renderItem}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         ListEmptyComponent={renderEmpty}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await load();
+              setRefreshing(false);
+            }}
+            tintColor={c.lime}
+          />
+        }
         contentContainerStyle={{ paddingHorizontal: 22, paddingTop: insets.top + 72, paddingBottom: insets.bottom + 100 }}
       />
     </StatusBg>
